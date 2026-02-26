@@ -1,0 +1,28 @@
+# Training data and model weights (too large for git)
+data/
+models/*.keras
+models/*.h5
+
+# Keep the TF.js converted model (small enough for Pages)
+# models/tfjs/ is tracked
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp
+*.tmp
+*.log

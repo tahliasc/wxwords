@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WxWords — Christchurch Forecast</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #222;
+      line-height: 1.5;
+      padding: 1rem;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      padding: 1.5rem 0;
+      border-bottom: 2px solid #333;
+      margin-bottom: 1.5rem;
+    }
+
+    header h1 { font-size: 1.8rem; }
+    header p { color: #666; margin-top: 0.25rem; }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 700px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 1.25rem;
+    }
+
+    .panel h2 {
+      font-size: 1.1rem;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #eee;
+    }
+
+    /* Today's forecast */
+    .today-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.5rem;
+    }
+
+    .today-header .date { font-weight: 600; font-size: 1rem; }
+
+    .temps { font-size: 0.95rem; }
+    .temps .high { color: #c0392b; font-weight: 600; }
+    .temps .low { color: #2980b9; font-weight: 600; }
+
+    .forecast-text {
+      font-size: 0.95rem;
+      color: #444;
+      margin-top: 0.25rem;
+    }
+
+    .update-time {
+      font-size: 0.8rem;
+      color: #999;
+      margin-top: 0.75rem;
+    }
+
+    /* Webcam */
+    .webcam-container { text-align: center; }
+
+    .webcam-container img {
+      max-width: 100%;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+
+    .webcam-label {
+      font-size: 0.8rem;
+      color: #888;
+      margin-top: 0.4rem;
+    }
+
+    /* Cloud classification placeholder */
+    .cloud-result {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      background: #f8f9fa;
+      border-radius: 4px;
+      border: 1px solid #e9ecef;
+    }
+
+    .cloud-type {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+
+    .cloud-confidence {
+      font-size: 0.85rem;
+      color: #666;
+      margin-top: 0.15rem;
+    }
+
+    .cloud-desc {
+      font-size: 0.85rem;
+      color: #555;
+      margin-top: 0.25rem;
+    }
+
+    .cloud-pending {
+      font-size: 0.9rem;
+      color: #888;
+      font-style: italic;
+    }
+
+    /* Te reo section */
+    .tereo-display {
+      white-space: pre-wrap;
+      font-size: 0.95rem;
+      color: #444;
+      min-height: 2rem;
+    }
+
+    .tereo-empty { color: #999; font-style: italic; }
+
+    .tereo-form { margin-top: 1rem; }
+
+    .tereo-form textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      resize: vertical;
+    }
+
+    .tereo-form button {
+      margin-top: 0.5rem;
+      padding: 0.4rem 1rem;
+      background: #333;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .tereo-form button:hover { background: #555; }
+
+    .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .btn-secondary { background: #999 !important; }
+    .btn-secondary:hover { background: #777 !important; }
+
+    .save-msg {
+      font-size: 0.8rem;
+      color: #27ae60;
+      margin-top: 0.25rem;
+      display: none;
+    }
+
+    .loading { color: #888; font-style: italic; }
+    .error { color: #c0392b; }
+
+    footer {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid #ddd;
+      text-align: center;
+      font-size: 0.8rem;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>WxWords</h1>
+  <p>&#332;tautahi Christchurch — Weather Forecast</p>
+</header>
+
+<div class="main-grid">
+  <!-- Left column: forecast + te reo -->
+  <div>
+    <!-- Today's MetService Forecast -->
+    <div class="panel" style="margin-bottom: 1.5rem;">
+      <h2>Today's Forecast</h2>
+      <div id="metservice-forecast">
+        <p class="loading">Loading forecast...</p>
+      </div>
+    </div>
+
+    <!-- Te Reo Māori Forecast -->
+    <div class="panel">
+      <h2>Te Reo M&#257;ori Forecast</h2>
+      <div id="tereo-display" class="tereo-display">
+        <p class="tereo-empty">No te reo forecast entered yet.</p>
+      </div>
+      <div class="tereo-form">
+        <textarea id="tereo-input" placeholder="Enter te reo M&#257;ori forecast here..."></textarea>
+        <div class="btn-row">
+          <button id="tereo-save">Save</button>
+          <button id="tereo-clear" class="btn-secondary">Clear</button>
+        </div>
+        <p id="save-msg" class="save-msg">Saved.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right column: webcam + cloud classification -->
+  <div>
+    <div class="panel">
+      <h2>Current Sky — Webcam</h2>
+      <div class="webcam-container">
+        <img id="webcam-img"
+             src="https://imgproxy.windy.com/_/full/plain/current/1672279274/original.jpg"
+             alt="Christchurch webcam — Coastal Burwood">
+        <p class="webcam-label">Coastal Burwood, Christchurch — via Windy</p>
+      </div>
+
+      <div id="cloud-result" class="cloud-result">
+        <p class="cloud-pending">Cloud classification coming soon — model training in progress.</p>
+      </div>
+
+      <button id="refresh-btn" style="margin-top:0.75rem;padding:0.4rem 1rem;background:#333;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.85rem;">
+        Refresh Webcam
+      </button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>Forecast data: <a href="https://www.metservice.com" target="_blank">MetService NZ</a>
+     &middot; Webcam: <a href="https://www.windy.com/-Webcams/webcams/1672279274" target="_blank">Windy</a>
+     &middot; Cloud classification: <a href="https://github.com/marcosPlaza/Ground-based-Cloud-Classification-with-Deep-Learning" target="_blank">CCSN</a></p>
+</footer>
+
+<script>
+  // --- MetService Forecast (today only) ---
+  const METSERVICE_URL = 'https://www.metservice.com/publicData/localForecastchristchurch';
+  const CORS_PROXY = 'https://corsproxy.io/?';
+  const forecastContainer = document.getElementById('metservice-forecast');
+
+  async function fetchForecast() {
+    const urls = [
+      METSERVICE_URL,
+      CORS_PROXY + encodeURIComponent(METSERVICE_URL),
+    ];
+
+    for (const url of urls) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const data = await res.json();
+        renderTodayForecast(data);
+        return;
+      } catch (_) { /* try next */ }
+    }
+
+    forecastContainer.innerHTML = `<p class="error">Could not load forecast.</p>
+      <p style="font-size:0.85rem;color:#888;margin-top:0.5rem;">
+        CORS restriction — a server-side proxy may be needed.
+      </p>`;
+  }
+
+  function renderTodayForecast(data) {
+    if (!data.days || !data.days.length) {
+      forecastContainer.innerHTML = '<p class="error">No forecast data available.</p>';
+      return;
+    }
+
+    const today = data.days[0];
+    const high = today.max != null ? `<span class="high">${today.max}&deg;C</span>` : '';
+    const low = today.min != null ? `<span class="low">${today.min}&deg;C</span>` : '';
+    const temps = [high, low].filter(Boolean).join(' / ');
+    const issued = today.issuedAt || '';
+
+    forecastContainer.innerHTML = `
+      <div class="today-header">
+        <span class="date">${today.dow || today.date}</span>
+        <span class="temps">${temps}</span>
+      </div>
+      <p class="forecast-text">${today.forecast || today.forecastWord || ''}</p>
+      ${issued ? `<p class="update-time">Updated: ${issued}</p>` : ''}`;
+  }
+
+  fetchForecast();
+
+  // --- Webcam refresh ---
+  const webcamImg = document.getElementById('webcam-img');
+  document.getElementById('refresh-btn').addEventListener('click', () => {
+    const baseUrl = 'https://imgproxy.windy.com/_/full/plain/current/1672279274/original.jpg';
+    webcamImg.src = baseUrl + '?t=' + Date.now();
+  });
+
+  // --- Te Reo Māori Forecast ---
+  const STORAGE_KEY = 'wxwords_tereo_forecast';
+  const tereoDisplay = document.getElementById('tereo-display');
+  const tereoInput = document.getElementById('tereo-input');
+  const saveBtn = document.getElementById('tereo-save');
+  const clearBtn = document.getElementById('tereo-clear');
+  const saveMsg = document.getElementById('save-msg');
+
+  function loadTereo() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      tereoDisplay.textContent = saved;
+      tereoDisplay.classList.remove('tereo-empty');
+      tereoInput.value = saved;
+    }
+  }
+
+  saveBtn.addEventListener('click', () => {
+    const text = tereoInput.value.trim();
+    if (text) {
+      localStorage.setItem(STORAGE_KEY, text);
+      tereoDisplay.textContent = text;
+      tereoDisplay.classList.remove('tereo-empty');
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+      tereoDisplay.innerHTML = '<p class="tereo-empty">No te reo forecast entered yet.</p>';
+    }
+    saveMsg.style.display = 'block';
+    setTimeout(() => saveMsg.style.display = 'none', 2000);
+  });
+
+  clearBtn.addEventListener('click', () => {
+    localStorage.removeItem(STORAGE_KEY);
+    tereoInput.value = '';
+    tereoDisplay.innerHTML = '<p class="tereo-empty">No te reo forecast entered yet.</p>';
+  });
+
+  loadTereo();
+</script>
+
+</body>
+</html>
