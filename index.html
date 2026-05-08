@@ -195,6 +195,7 @@
 <header>
   <h1>WxWords</h1>
   <p>&#332;tautahi Christchurch — Weather Forecast</p>
+  <nav style="margin-top:0.5rem"><a href="upload.html" style="color:#0066cc;font-size:0.9rem;text-decoration:none">Upload a cloud photo &rarr;</a></nav>
 </header>
 
 <div class="main-grid">
@@ -237,7 +238,7 @@
       </div>
 
       <div id="cloud-result" class="cloud-result">
-        <p class="cloud-pending">Cloud classification coming soon — model training in progress.</p>
+        <p class="cloud-pending" id="cloud-status">Loading cloud classifier...</p>
       </div>
 
       <button id="refresh-btn" style="margin-top:0.75rem;padding:0.4rem 1rem;background:#333;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.85rem;">
@@ -253,7 +254,87 @@
      &middot; Cloud classification: <a href="https://github.com/marcosPlaza/Ground-based-Cloud-Classification-with-Deep-Learning" target="_blank">CCSN</a></p>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
 <script>
+  // --- Cloud Classification ---
+  const CLASS_DESCRIPTIONS = {
+    Ac: 'Altocumulus — mid-level, patchy layers',
+    As: 'Altostratus — mid-level, grey sheet',
+    Asperitas: 'Asperitas — dramatic, wave-like undulations',
+    Cb: 'Cumulonimbus — towering thunderstorm cloud',
+    Cc: 'Cirrocumulus — high, small rippled patches',
+    Ci: 'Cirrus — high, wispy streaks',
+    Clear: 'Clear sky — little to no cloud',
+    Cs: 'Cirrostratus — high, thin hazy veil',
+    Ct: 'Contrail — aircraft condensation trail',
+    Cu: 'Cumulus — fair-weather puffy cloud',
+    Fog: 'Fog — ground-level stratus, low visibility',
+    Lenticular: 'Lenticular — lens-shaped, often near mountains',
+    Mammatus: 'Mammatus — pouch-like bulges beneath cloud base',
+    Ns: 'Nimbostratus — thick, dark rain-bearing layer',
+    Rainbow: 'Rainbow — visible spectrum arc in sky',
+    Sc: 'Stratocumulus — low, lumpy grey layer',
+    St: 'Stratus — low, flat uniform grey layer',
+  };
+
+  let cloudModel = null;
+  let classNames = null;
+
+  async function loadCloudModel() {
+    const status = document.getElementById('cloud-status');
+    try {
+      const res = await fetch('models/tfjs/class_names.json');
+      classNames = await res.json();
+      cloudModel = await tf.loadLayersModel('models/tfjs/model.json');
+      status.textContent = 'Classifier ready — analysing...';
+      classifyWebcam();
+    } catch (e) {
+      status.textContent = 'Could not load cloud classifier.';
+      console.error('Model load error:', e);
+    }
+  }
+
+  async function classifyWebcam() {
+    if (!cloudModel || !classNames) return;
+    const resultDiv = document.getElementById('cloud-result');
+
+    try {
+      const img = document.getElementById('webcam-img');
+      // Wait for image to be loaded
+      if (!img.complete) {
+        await new Promise(r => { img.onload = r; img.onerror = r; });
+      }
+
+      const tensor = tf.tidy(() => {
+        let t = tf.browser.fromPixels(img);
+        t = tf.image.resizeBilinear(t, [224, 224]);
+        // ResNet50V2 preprocess_input: scale to [-1, 1]
+        t = t.toFloat().div(127.5).sub(1.0);
+        return t.expandDims(0);
+      });
+
+      const preds = cloudModel.predict(tensor);
+      const probs = await preds.data();
+      tensor.dispose();
+      preds.dispose();
+
+      const maxIdx = probs.indexOf(Math.max(...probs));
+      const label = classNames[maxIdx];
+      const confidence = (probs[maxIdx] * 100).toFixed(1);
+      const desc = CLASS_DESCRIPTIONS[label] || label;
+
+      resultDiv.innerHTML = `
+        <p class="cloud-type">${label}</p>
+        <p class="cloud-confidence">${confidence}% confidence</p>
+        <p class="cloud-desc">${desc}</p>`;
+    } catch (e) {
+      resultDiv.innerHTML = `<p class="cloud-pending">Classification failed — image may be unavailable.</p>`;
+      console.error('Classification error:', e);
+    }
+  }
+
+  loadCloudModel();
+
   // --- MetService Forecast (today only) ---
   const METSERVICE_URL = 'https://www.metservice.com/publicData/localForecastchristchurch';
   const CORS_PROXY = 'https://corsproxy.io/?';
@@ -309,6 +390,7 @@
   document.getElementById('refresh-btn').addEventListener('click', () => {
     const baseUrl = 'https://imgproxy.windy.com/_/full/plain/current/1672279274/original.jpg';
     webcamImg.src = baseUrl + '?t=' + Date.now();
+    webcamImg.onload = () => classifyWebcam();
   });
 
   // --- Te Reo Māori Forecast ---

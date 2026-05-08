@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TJNU Cloud Image Sorter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+    }
+
+    /* Top bar */
+    .topbar {
+      background: #16213e;
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #333;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .topbar h1 { font-size: 1.2rem; }
+
+    .progress-info {
+      display: flex;
+      gap: 1.5rem;
+      font-size: 0.85rem;
+      color: #aaa;
+    }
+
+    .progress-info span { color: #4ecca3; font-weight: 600; }
+
+    .progress-bar-bg {
+      width: 200px;
+      height: 6px;
+      background: #333;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: #4ecca3;
+      transition: width 0.3s;
+    }
+
+    /* Filter bar */
+    .filterbar {
+      background: #16213e;
+      padding: 0.5rem 1.5rem;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+      border-bottom: 1px solid #333;
+    }
+
+    .filterbar label {
+      font-size: 0.8rem;
+      color: #aaa;
+      margin-right: 0.5rem;
+    }
+
+    .filter-btn {
+      padding: 0.25rem 0.6rem;
+      background: #2a2a4a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    .filter-btn:hover { background: #3a3a5a; }
+    .filter-btn.active { background: #4ecca3; color: #111; border-color: #4ecca3; }
+
+    /* Main layout */
+    .main {
+      display: flex;
+      height: calc(100vh - 90px);
+    }
+
+    /* Image panel */
+    .image-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      position: relative;
+    }
+
+    .image-panel img {
+      max-width: 90%;
+      max-height: 60vh;
+      border-radius: 6px;
+      border: 2px solid #333;
+    }
+
+    .image-info {
+      margin-top: 0.75rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: #999;
+    }
+
+    .image-info .filename { color: #ccc; font-weight: 500; }
+
+    .prediction-box {
+      margin-top: 0.75rem;
+      padding: 0.75rem 1.25rem;
+      background: #16213e;
+      border-radius: 6px;
+      border: 1px solid #333;
+      text-align: center;
+    }
+
+    .prediction-box .model-says {
+      font-size: 0.8rem;
+      color: #888;
+      margin-bottom: 0.25rem;
+    }
+
+    .prediction-box .predicted-class {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #e2b93b;
+    }
+
+    .prediction-box .confidence {
+      font-size: 0.85rem;
+      color: #aaa;
+      margin-top: 0.15rem;
+    }
+
+    .prediction-box .alts {
+      font-size: 0.8rem;
+      color: #777;
+      margin-top: 0.25rem;
+    }
+
+    .tjnu-label {
+      font-size: 0.8rem;
+      color: #666;
+      margin-top: 0.5rem;
+    }
+
+    /* Class buttons panel */
+    .class-panel {
+      width: 280px;
+      background: #16213e;
+      border-left: 1px solid #333;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    .class-panel h3 {
+      font-size: 0.9rem;
+      color: #aaa;
+      margin-bottom: 0.75rem;
+    }
+
+    .class-btn {
+      display: block;
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      margin-bottom: 0.4rem;
+      background: #2a2a4a;
+      border: 2px solid #444;
+      border-radius: 6px;
+      color: #ddd;
+      cursor: pointer;
+      font-size: 0.9rem;
+      text-align: left;
+      transition: all 0.15s;
+    }
+
+    .class-btn:hover { background: #3a3a5a; border-color: #666; }
+
+    .class-btn.predicted {
+      border-color: #e2b93b;
+      background: #3a3520;
+    }
+
+    .class-btn.selected {
+      border-color: #4ecca3;
+      background: #1a3a2a;
+      color: #4ecca3;
+      font-weight: 600;
+    }
+
+    .class-btn .shortcut {
+      float: right;
+      font-size: 0.7rem;
+      color: #666;
+      margin-top: 2px;
+    }
+
+    .class-btn .count {
+      font-size: 0.75rem;
+      color: #888;
+      margin-left: 0.5rem;
+    }
+
+    .skip-btn {
+      display: block;
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.75rem;
+      background: #4a2a2a;
+      border: 1px solid #633;
+      border-radius: 6px;
+      color: #e88;
+      cursor: pointer;
+      font-size: 0.85rem;
+      text-align: center;
+    }
+
+    .skip-btn:hover { background: #5a3535; }
+
+    /* Navigation */
+    .nav-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .nav-btn {
+      padding: 0.5rem 1.25rem;
+      background: #2a2a4a;
+      border: 1px solid #555;
+      border-radius: 4px;
+      color: #ddd;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .nav-btn:hover { background: #3a3a5a; }
+
+    /* Export */
+    .export-section {
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #333;
+    }
+
+    .export-btn {
+      display: block;
+      width: 100%;
+      padding: 0.6rem;
+      background: #4ecca3;
+      border: none;
+      border-radius: 6px;
+      color: #111;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .export-btn:hover { background: #3dbb92; }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 80vh;
+      color: #666;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .empty-state h2 { color: #aaa; margin-bottom: 1rem; }
+    .empty-state code { background: #2a2a4a; padding: 0.2rem 0.5rem; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>TJNU Cloud Sorter</h1>
+  <div class="progress-info">
+    <div>Reviewed: <span id="reviewed-count">0</span> / <span id="total-count">0</span></div>
+    <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill"></div></div>
+    <div>Agreed with model: <span id="agree-pct">-</span></div>
+  </div>
+</div>
+
+<div class="filterbar">
+  <label>Show:</label>
+  <button class="filter-btn active" data-filter="unreviewed">Unreviewed</button>
+  <button class="filter-btn" data-filter="all">All</button>
+  <button class="filter-btn" data-filter="reviewed">Reviewed</button>
+  <button class="filter-btn" data-filter="skipped">Skipped</button>
+  <label style="margin-left:1rem;">TJNU class:</label>
+  <button class="filter-btn" data-tjnu="all">All</button>
+  <button class="filter-btn" data-tjnu="1">1-Cu</button>
+  <button class="filter-btn" data-tjnu="2">2-Ac/Cc</button>
+  <button class="filter-btn" data-tjnu="3">3-Ci/Cs</button>
+  <button class="filter-btn" data-tjnu="4">4-Clear</button>
+  <button class="filter-btn" data-tjnu="5">5-Sc/St/As</button>
+  <button class="filter-btn" data-tjnu="6">6-Cb/Ns</button>
+  <button class="filter-btn" data-tjnu="7">7-Mixed</button>
+</div>
+
+<div class="main" id="main-area">
+  <div class="empty-state" id="empty-state">
+    <h2>No predictions loaded</h2>
+    <p>Run the pre-sort script first:</p>
+    <p style="margin-top:0.5rem"><code>python presort_tjnu.py</code></p>
+    <p style="margin-top:1rem">Then reload this page. It will load <code>data/tjnu_predictions.json</code></p>
+  </div>
+</div>
+
+<script>
+const CLASSES = ["Ac", "As", "Asperitas", "Cb", "Cc", "Ci", "Clear", "Cs", "Ct", "Cu", "Fog", "Lenticular", "Mammatus", "Ns", "Rainbow", "Sc", "St"];
+const SHORTCUTS = {
+  '1': 'Ac', '2': 'As', '3': 'Asperitas', '4': 'Cb', '5': 'Cc', '6': 'Ci',
+  '7': 'Clear', '8': 'Cs', '9': 'Ct', '0': 'Cu', '-': 'Fog', '=': 'Lenticular',
+  'q': 'Mammatus', 'w': 'Ns', 'e': 'Rainbow', 'r': 'Sc', 't': 'St',
+};
+const SHORTCUT_LABELS = {};
+for (const [k, v] of Object.entries(SHORTCUTS)) SHORTCUT_LABELS[v] = k;
+
+const TJNU_DIR = 'data/TJNU-GCD/GCD';
+const STORAGE_KEY = 'wxwords_tjnu_sorting';
+
+let allData = [];
+let filteredIndices = [];
+let currentIdx = 0;
+let currentFilter = 'unreviewed';
+let currentTjnuFilter = 'all';
+
+// Load saved progress from localStorage
+function loadProgress() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch { return {}; }
+  }
+  return {};
+}
+
+function saveProgress(decisions) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(decisions));
+}
+
+// decisions: { "relative/path.jpg": { assigned: "Cu", skipped: false } }
+let decisions = loadProgress();
+
+async function init() {
+  try {
+    const res = await fetch('data/tjnu_predictions.json');
+    if (!res.ok) throw new Error('Not found');
+    allData = await res.json();
+  } catch {
+    return; // Show empty state
+  }
+
+  // Restore saved decisions
+  for (const item of allData) {
+    if (decisions[item.path]) {
+      item.assigned = decisions[item.path].assigned;
+      item.skipped = decisions[item.path].skipped || false;
+    }
+  }
+
+  document.getElementById('empty-state').style.display = 'none';
+  applyFilter();
+  render();
+  setupKeyboard();
+  setupFilters();
+}
+
+function applyFilter() {
+  filteredIndices = [];
+  for (let i = 0; i < allData.length; i++) {
+    const item = allData[i];
+
+    // TJNU class filter
+    if (currentTjnuFilter !== 'all' && item.tjnu_class !== currentTjnuFilter) continue;
+
+    // Status filter
+    if (currentFilter === 'unreviewed' && (item.assigned || item.skipped)) continue;
+    if (currentFilter === 'reviewed' && !item.assigned) continue;
+    if (currentFilter === 'skipped' && !item.skipped) continue;
+
+    filteredIndices.push(i);
+  }
+  currentIdx = 0;
+}
+
+function render() {
+  updateStats();
+
+  if (filteredIndices.length === 0) {
+    document.getElementById('main-area').innerHTML = `
+      <div class="empty-state">
+        <h2>No images match this filter</h2>
+        <p>Try a different filter or you may be done reviewing!</p>
+      </div>`;
+    return;
+  }
+
+  if (currentIdx >= filteredIndices.length) currentIdx = filteredIndices.length - 1;
+  if (currentIdx < 0) currentIdx = 0;
+
+  const dataIdx = filteredIndices[currentIdx];
+  const item = allData[dataIdx];
+  const imgSrc = `${TJNU_DIR}/${item.path}`;
+
+  // Count per-class assignments
+  const classCounts = {};
+  for (const it of allData) {
+    if (it.assigned) {
+      classCounts[it.assigned] = (classCounts[it.assigned] || 0) + 1;
+    }
+  }
+
+  const classButtons = CLASSES.map(cls => {
+    const isPredicted = cls === item.predicted;
+    const isSelected = cls === item.assigned;
+    const count = classCounts[cls] || 0;
+    const shortcut = SHORTCUT_LABELS[cls] || '';
+    let classes = 'class-btn';
+    if (isPredicted) classes += ' predicted';
+    if (isSelected) classes += ' selected';
+    return `<button class="${classes}" data-class="${cls}">
+      ${cls}${count ? `<span class="count">(${count})</span>` : ''}
+      ${shortcut ? `<span class="shortcut">${shortcut}</span>` : ''}
+    </button>`;
+  }).join('');
+
+  document.getElementById('main-area').innerHTML = `
+    <div class="image-panel">
+      <img src="${imgSrc}" alt="${item.path}" crossorigin="anonymous">
+      <div class="image-info">
+        <div class="filename">${item.path}</div>
+        <div>${currentIdx + 1} of ${filteredIndices.length} (filtered)</div>
+      </div>
+      <div class="prediction-box">
+        <div class="model-says">Model prediction</div>
+        <div class="predicted-class">${item.predicted}</div>
+        <div class="confidence">${item.confidence}% confidence</div>
+        <div class="alts">Also: ${item.top2} (${item.top2_conf}%), ${item.top3} (${item.top3_conf}%)</div>
+      </div>
+      <div class="tjnu-label">TJNU label: ${item.tjnu_label} (class ${item.tjnu_class}) &mdash; hint: ${item.tjnu_hint}</div>
+      <div class="nav-row">
+        <button class="nav-btn" id="prev-btn">&larr; Prev</button>
+        <button class="nav-btn" id="next-btn">Next &rarr;</button>
+      </div>
+    </div>
+    <div class="class-panel">
+      <h3>Assign class:</h3>
+      ${classButtons}
+      <button class="skip-btn" id="skip-btn">${item.skipped ? 'Unskip' : 'Skip (s)'}</button>
+      <div class="export-section">
+        <button class="export-btn" id="export-btn">Export decisions (JSON)</button>
+        <button class="export-btn" style="margin-top:0.4rem;background:#e2b93b;" id="accept-all-btn">
+          Accept all model predictions
+        </button>
+      </div>
+    </div>`;
+
+  // Wire up buttons
+  document.querySelectorAll('.class-btn').forEach(btn => {
+    btn.addEventListener('click', () => assignClass(btn.dataset.class));
+  });
+
+  document.getElementById('skip-btn').addEventListener('click', toggleSkip);
+  document.getElementById('prev-btn').addEventListener('click', () => navigate(-1));
+  document.getElementById('next-btn').addEventListener('click', () => navigate(1));
+  document.getElementById('export-btn').addEventListener('click', exportDecisions);
+  document.getElementById('accept-all-btn').addEventListener('click', acceptAllPredictions);
+}
+
+function assignClass(cls) {
+  const dataIdx = filteredIndices[currentIdx];
+  const item = allData[dataIdx];
+  item.assigned = cls;
+  item.skipped = false;
+  decisions[item.path] = { assigned: cls, skipped: false };
+  saveProgress(decisions);
+
+  // Auto-advance
+  if (currentFilter === 'unreviewed') {
+    applyFilter();
+  } else {
+    navigate(1);
+  }
+  render();
+}
+
+function toggleSkip() {
+  const dataIdx = filteredIndices[currentIdx];
+  const item = allData[dataIdx];
+  item.skipped = !item.skipped;
+  if (item.skipped) item.assigned = null;
+  decisions[item.path] = { assigned: null, skipped: item.skipped };
+  saveProgress(decisions);
+
+  if (currentFilter === 'unreviewed') {
+    applyFilter();
+  } else {
+    navigate(1);
+  }
+  render();
+}
+
+function navigate(dir) {
+  currentIdx = Math.max(0, Math.min(filteredIndices.length - 1, currentIdx + dir));
+  render();
+}
+
+function updateStats() {
+  const total = allData.length;
+  const reviewed = allData.filter(i => i.assigned).length;
+  const skipped = allData.filter(i => i.skipped).length;
+  const agreed = allData.filter(i => i.assigned && i.assigned === i.predicted).length;
+  const agreePct = reviewed > 0 ? Math.round((agreed / reviewed) * 100) : '-';
+
+  document.getElementById('total-count').textContent = total;
+  document.getElementById('reviewed-count').textContent = reviewed + skipped;
+  document.getElementById('agree-pct').textContent = agreePct + '%';
+  document.getElementById('progress-fill').style.width =
+    total > 0 ? ((reviewed + skipped) / total * 100) + '%' : '0%';
+}
+
+function acceptAllPredictions() {
+  if (!confirm('Accept the model prediction for all unreviewed images?')) return;
+  for (const item of allData) {
+    if (!item.assigned && !item.skipped) {
+      item.assigned = item.predicted;
+      decisions[item.path] = { assigned: item.predicted, skipped: false };
+    }
+  }
+  saveProgress(decisions);
+  applyFilter();
+  render();
+}
+
+function exportDecisions() {
+  const output = allData
+    .filter(i => i.assigned)
+    .map(i => ({
+      source_path: i.path,
+      assigned_class: i.assigned,
+      model_predicted: i.predicted,
+      model_confidence: i.confidence,
+      agreed: i.assigned === i.predicted,
+    }));
+
+  const blob = new Blob([JSON.stringify(output, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'tjnu_sorted_decisions.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function setupKeyboard() {
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    if (e.key === 'ArrowRight' || e.key === 'n') { navigate(1); return; }
+    if (e.key === 'ArrowLeft' || e.key === 'p') { navigate(-1); return; }
+    if (e.key === 's') { toggleSkip(); return; }
+    if (e.key === 'Enter') {
+      // Accept model prediction
+      const dataIdx = filteredIndices[currentIdx];
+      if (dataIdx !== undefined) assignClass(allData[dataIdx].predicted);
+      return;
+    }
+
+    // Class shortcuts
+    if (SHORTCUTS[e.key]) {
+      assignClass(SHORTCUTS[e.key]);
+    }
+  });
+}
+
+function setupFilters() {
+  document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn[data-filter]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = btn.dataset.filter;
+      applyFilter();
+      render();
+    });
+  });
+
+  document.querySelectorAll('.filter-btn[data-tjnu]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn[data-tjnu]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentTjnuFilter = btn.dataset.tjnu;
+      applyFilter();
+      render();
+    });
+  });
+}
+
+init();
+</script>
+
+</body>
+</html>

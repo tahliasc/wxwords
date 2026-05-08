@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WxWords — Upload Cloud Photo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #222;
+      line-height: 1.5;
+      padding: 1rem;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      padding: 1.5rem 0;
+      border-bottom: 2px solid #333;
+      margin-bottom: 1.5rem;
+    }
+
+    header h1 { font-size: 1.8rem; }
+    header p { color: #666; margin-top: 0.25rem; }
+
+    nav {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    nav a {
+      color: #0066cc;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    nav a:hover { text-decoration: underline; }
+
+    /* Upload area */
+    .upload-area {
+      border: 2px dashed #bbb;
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      margin-bottom: 1.5rem;
+      background: #fff;
+    }
+
+    .upload-area:hover,
+    .upload-area.dragover {
+      border-color: #0066cc;
+      background: #f0f7ff;
+    }
+
+    .upload-area.has-image {
+      border-style: solid;
+      border-color: #4ecca3;
+      padding: 0.5rem;
+    }
+
+    .upload-area img {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: 4px;
+    }
+
+    .upload-area .placeholder {
+      color: #888;
+    }
+
+    .upload-area .placeholder strong {
+      display: block;
+      font-size: 1.1rem;
+      color: #555;
+      margin-bottom: 0.25rem;
+    }
+
+    .upload-hint {
+      font-size: 0.8rem;
+      color: #999;
+      text-align: center;
+      margin-top: -1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    input[type="file"] { display: none; }
+
+    /* Sections */
+    .section {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .section h2 {
+      font-size: 1rem;
+      margin-bottom: 0.75rem;
+      color: #333;
+    }
+
+    /* Cloud type selector */
+    .cloud-group {
+      margin-bottom: 0.75rem;
+    }
+
+    .cloud-group-header {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #666;
+      padding: 0.3rem 0;
+      border-bottom: 1px solid #eee;
+      margin-bottom: 0.4rem;
+    }
+
+    .cloud-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .cloud-option {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.65rem;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      background: #fafafa;
+      transition: all 0.15s;
+    }
+
+    .cloud-option:hover { border-color: #999; background: #f0f0f0; }
+
+    .cloud-option.selected {
+      border-color: #0066cc;
+      background: #e8f0fe;
+      font-weight: 600;
+    }
+
+    .cloud-option .info-icon {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #ddd;
+      color: #666;
+      font-size: 0.65rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      cursor: help;
+      flex-shrink: 0;
+    }
+
+    .cloud-option .info-icon:hover { background: #0066cc; color: #fff; }
+
+    /* Example image modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.visible { display: flex; }
+
+    .modal-content {
+      background: #fff;
+      border-radius: 8px;
+      padding: 1rem;
+      max-width: 500px;
+      width: 90%;
+      text-align: center;
+    }
+
+    .modal-content img {
+      max-width: 100%;
+      max-height: 50vh;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+
+    .modal-content h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+    .modal-content p { font-size: 0.85rem; color: #666; }
+    .modal-close {
+      margin-top: 0.75rem;
+      padding: 0.4rem 1.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #f5f5f5;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    /* Additional info toggle */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+    }
+
+    .toggle-row label { font-size: 0.9rem; }
+
+    .toggle-btn {
+      display: flex;
+      gap: 0;
+    }
+
+    .toggle-btn button {
+      padding: 0.35rem 1rem;
+      border: 1px solid #ccc;
+      background: #f5f5f5;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: #666;
+    }
+
+    .toggle-btn button:first-child { border-radius: 4px 0 0 4px; }
+    .toggle-btn button:last-child { border-radius: 0 4px 4px 0; border-left: 0; }
+    .toggle-btn button.active { background: #0066cc; color: #fff; border-color: #0066cc; }
+
+    /* Extra details form */
+    .extra-details {
+      display: none;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #eee;
+    }
+
+    .extra-details.visible { display: block; }
+
+    .form-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .form-field {
+      flex: 1;
+    }
+
+    .form-field label {
+      display: block;
+      font-size: 0.8rem;
+      color: #666;
+      margin-bottom: 0.2rem;
+    }
+
+    .form-field input,
+    .form-field select,
+    .form-field textarea {
+      width: 100%;
+      padding: 0.4rem 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      font-family: inherit;
+    }
+
+    .form-field textarea { resize: vertical; min-height: 60px; }
+
+    /* Multi-label cloud tags */
+    .multi-cloud-label { font-size: 0.8rem; color: #666; margin-bottom: 0.3rem; }
+
+    .multi-cloud-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+    }
+
+    .multi-tag {
+      padding: 0.25rem 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      background: #fafafa;
+    }
+
+    .multi-tag:hover { border-color: #999; }
+    .multi-tag.selected { background: #e8f0fe; border-color: #0066cc; color: #0066cc; }
+
+    /* Camera direction */
+    .direction-grid {
+      display: inline-grid;
+      grid-template-columns: repeat(3, 40px);
+      grid-template-rows: repeat(3, 40px);
+      gap: 2px;
+      margin: 0.25rem 0;
+    }
+
+    .dir-btn {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #fafafa;
+      cursor: pointer;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #666;
+    }
+
+    .dir-btn:hover { border-color: #999; }
+    .dir-btn.selected { background: #0066cc; color: #fff; border-color: #0066cc; }
+    .dir-btn.center { font-size: 0.6rem; }
+
+    /* Submit */
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .btn-primary {
+      flex: 1;
+      padding: 0.7rem;
+      background: #0066cc;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-primary:hover { background: #0055aa; }
+    .btn-primary:disabled { background: #999; cursor: not-allowed; }
+
+    .btn-secondary {
+      padding: 0.7rem 1.25rem;
+      background: #fff;
+      color: #666;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .btn-secondary:hover { background: #f0f0f0; }
+
+    /* Status messages */
+    .status {
+      text-align: center;
+      padding: 0.75rem;
+      border-radius: 6px;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    .status.success { display: block; background: #d4edda; color: #155724; }
+    .status.error { display: block; background: #f8d7da; color: #721c24; }
+    .status.info { display: block; background: #cce5ff; color: #004085; }
+
+    /* Draft indicator */
+    .draft-notice {
+      background: #fff3cd;
+      color: #856404;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .draft-notice.visible { display: flex; }
+
+    .draft-notice button {
+      background: none;
+      border: 1px solid #856404;
+      border-radius: 4px;
+      color: #856404;
+      padding: 0.2rem 0.6rem;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>WxWords</h1>
+  <p>Upload a cloud photo to help build our classification dataset</p>
+</header>
+
+<nav>
+  <a href="index.html">&larr; Back to forecast</a>
+  <span id="admin-status" style="float:right;font-size:0.8rem;color:#999"></span>
+</nav>
+
+<div class="draft-notice" id="draft-notice">
+  <span>You have a saved draft from a previous visit.</span>
+  <div>
+    <button onclick="loadDraft()">Restore</button>
+    <button onclick="clearDraft()">Discard</button>
+  </div>
+</div>
+
+<!-- Image upload -->
+<div class="upload-area" id="upload-area">
+  <div class="placeholder" id="upload-placeholder">
+    <strong>Drop a cloud photo here or click to browse</strong>
+    JPEG or PNG, any size
+  </div>
+</div>
+<input type="file" id="file-input" accept="image/jpeg,image/png">
+<p class="upload-hint" id="upload-hint"></p>
+
+<!-- Cloud type selection -->
+<div class="section">
+  <h2>What type of cloud is this?</h2>
+
+  <div class="cloud-group">
+    <div class="cloud-group-header">Low clouds</div>
+    <div class="cloud-options" id="cloud-options">
+      <div class="cloud-option" data-class="St">St <span class="info-icon" data-class="St">?</span></div>
+      <div class="cloud-option" data-class="Sc">Sc <span class="info-icon" data-class="Sc">?</span></div>
+      <div class="cloud-option" data-class="Cu">Cu <span class="info-icon" data-class="Cu">?</span></div>
+      <div class="cloud-option" data-class="Fog">Fog <span class="info-icon" data-class="Fog">?</span></div>
+    </div>
+  </div>
+
+  <div class="cloud-group">
+    <div class="cloud-group-header">Mid-level clouds</div>
+    <div class="cloud-options">
+      <div class="cloud-option" data-class="Ac">Ac <span class="info-icon" data-class="Ac">?</span></div>
+      <div class="cloud-option" data-class="As">As <span class="info-icon" data-class="As">?</span></div>
+      <div class="cloud-option" data-class="Ns">Ns <span class="info-icon" data-class="Ns">?</span></div>
+    </div>
+  </div>
+
+  <div class="cloud-group">
+    <div class="cloud-group-header">High clouds</div>
+    <div class="cloud-options">
+      <div class="cloud-option" data-class="Ci">Ci <span class="info-icon" data-class="Ci">?</span></div>
+      <div class="cloud-option" data-class="Cc">Cc <span class="info-icon" data-class="Cc">?</span></div>
+      <div class="cloud-option" data-class="Cs">Cs <span class="info-icon" data-class="Cs">?</span></div>
+    </div>
+  </div>
+
+  <div class="cloud-group">
+    <div class="cloud-group-header">Vertical / special</div>
+    <div class="cloud-options">
+      <div class="cloud-option" data-class="Cb">Cb <span class="info-icon" data-class="Cb">?</span></div>
+      <div class="cloud-option" data-class="Mammatus">Mammatus <span class="info-icon" data-class="Mammatus">?</span></div>
+      <div class="cloud-option" data-class="Asperitas">Asperitas <span class="info-icon" data-class="Asperitas">?</span></div>
+      <div class="cloud-option" data-class="Lenticular">Lenticular <span class="info-icon" data-class="Lenticular">?</span></div>
+      <div class="cloud-option" data-class="Ct">Ct <span class="info-icon" data-class="Ct">?</span></div>
+    </div>
+  </div>
+
+  <div class="cloud-group">
+    <div class="cloud-group-header">Other</div>
+    <div class="cloud-options">
+      <div class="cloud-option" data-class="Clear">Clear sky <span class="info-icon" data-class="Clear">?</span></div>
+      <div class="cloud-option" data-class="Rainbow">Rainbow <span class="info-icon" data-class="Rainbow">?</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Additional info toggle -->
+<div class="section">
+  <div class="toggle-row">
+    <label>Would you like to submit additional information?</label>
+    <div class="toggle-btn">
+      <button id="extra-yes" onclick="toggleExtra(true)">Yes</button>
+      <button id="extra-no" class="active" onclick="toggleExtra(false)">No</button>
+    </div>
+  </div>
+
+  <div class="extra-details" id="extra-details">
+    <div class="form-row">
+      <div class="form-field">
+        <label>Date</label>
+        <input type="date" id="photo-date">
+      </div>
+      <div class="form-field">
+        <label>Time (approx)</label>
+        <input type="time" id="photo-time">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-field">
+        <label>Location</label>
+        <input type="text" id="photo-location" placeholder="e.g. Christchurch, NZ">
+      </div>
+      <div class="form-field">
+        <label>Camera facing</label>
+        <div class="direction-grid">
+          <div class="dir-btn" data-dir="NW">NW</div>
+          <div class="dir-btn" data-dir="N">N</div>
+          <div class="dir-btn" data-dir="NE">NE</div>
+          <div class="dir-btn" data-dir="W">W</div>
+          <div class="dir-btn center" data-dir="Up">Up</div>
+          <div class="dir-btn" data-dir="E">E</div>
+          <div class="dir-btn" data-dir="SW">SW</div>
+          <div class="dir-btn" data-dir="S">S</div>
+          <div class="dir-btn" data-dir="SE">SE</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-field">
+        <label>Weather conditions</label>
+        <select id="weather-conditions">
+          <option value="">-- Select --</option>
+          <option value="fine">Fine / calm</option>
+          <option value="windy">Windy</option>
+          <option value="rain">Raining</option>
+          <option value="drizzle">Drizzle</option>
+          <option value="snow">Snowing</option>
+          <option value="hail">Hail</option>
+          <option value="storm">Thunderstorm</option>
+          <option value="fog">Foggy</option>
+          <option value="changing">Rapidly changing</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Temperature (if known)</label>
+        <input type="number" id="temperature" placeholder="&deg;C" step="0.5">
+      </div>
+    </div>
+
+    <div class="form-field" style="margin-bottom:0.6rem">
+      <label>Notes</label>
+      <textarea id="photo-notes" placeholder="Anything else about the weather or photo..."></textarea>
+    </div>
+
+    <div>
+      <div class="multi-cloud-label">Other cloud types also visible in this image:</div>
+      <div class="multi-cloud-tags" id="multi-tags"></div>
+    </div>
+  </div>
+</div>
+
+<div class="actions">
+  <button class="btn-secondary" onclick="saveDraft()">Save for later</button>
+  <button class="btn-primary" id="submit-btn" disabled>Submit</button>
+</div>
+
+<div class="status" id="status-msg"></div>
+
+<!-- Example image modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-content">
+    <img id="modal-img" src="" alt="">
+    <h3 id="modal-title"></h3>
+    <p id="modal-desc"></p>
+    <button class="modal-close" onclick="closeModal()">Close</button>
+  </div>
+</div>
+
+<script>
+// --- Config ---
+const API_URL = 'https://wxwords-upload-api.tahliasc.workers.dev';
+const DRAFT_KEY = 'wxwords_upload_draft';
+
+const CLASSES = [
+  "Ac", "As", "Asperitas", "Cb", "Cc", "Ci", "Clear",
+  "Cs", "Ct", "Cu", "Fog", "Lenticular", "Mammatus",
+  "Ns", "Rainbow", "Sc", "St"
+];
+
+const CLASS_INFO = {
+  Ac:         { name: 'Altocumulus',   desc: 'Mid-level, patchy white/grey layers or rolls' },
+  As:         { name: 'Altostratus',   desc: 'Mid-level, uniform grey sheet — sun dimly visible' },
+  Asperitas:  { name: 'Asperitas',     desc: 'Dramatic, rough wave-like undulations on cloud base' },
+  Cb:         { name: 'Cumulonimbus',  desc: 'Towering thunderstorm cloud, anvil-shaped top' },
+  Cc:         { name: 'Cirrocumulus',   desc: 'High, tiny white rippled patches — "mackerel sky"' },
+  Ci:         { name: 'Cirrus',         desc: 'High, thin wispy streaks or hooks' },
+  Clear:      { name: 'Clear sky',      desc: 'Little to no cloud visible' },
+  Cs:         { name: 'Cirrostratus',   desc: 'High, thin veil — often creates sun/moon halo' },
+  Ct:         { name: 'Contrail',       desc: 'Aircraft condensation trail across the sky' },
+  Cu:         { name: 'Cumulus',         desc: 'Puffy, flat-bottomed fair-weather cloud' },
+  Fog:        { name: 'Fog',            desc: 'Ground-level cloud, very low visibility' },
+  Lenticular: { name: 'Lenticular',     desc: 'Smooth lens or saucer shape, often near mountains' },
+  Mammatus:   { name: 'Mammatus',       desc: 'Pouch-like bulges hanging from cloud base' },
+  Ns:         { name: 'Nimbostratus',    desc: 'Thick, dark grey layer — steady rain or snow' },
+  Rainbow:    { name: 'Rainbow',         desc: 'Visible spectrum arc — rain + sun opposite' },
+  Sc:         { name: 'Stratocumulus',   desc: 'Low, lumpy grey/white rolls or patches' },
+  St:         { name: 'Stratus',         desc: 'Low, flat, uniform grey layer — overcast' },
+};
+
+// --- State ---
+let selectedClass = null;
+let selectedDirection = null;
+let selectedMultiTags = new Set();
+let imageFile = null;
+let imageDataUrl = null;
+let showExtra = false;
+
+// --- Image upload ---
+const uploadArea = document.getElementById('upload-area');
+const fileInput = document.getElementById('file-input');
+const placeholder = document.getElementById('upload-placeholder');
+const hint = document.getElementById('upload-hint');
+
+uploadArea.addEventListener('click', () => fileInput.click());
+uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadArea.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+
+function handleFile(file) {
+  if (!file.type.match(/^image\/(jpeg|png)$/)) {
+    showStatus('Please upload a JPEG or PNG image.', 'error');
+    return;
+  }
+  imageFile = file;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    imageDataUrl = e.target.result;
+    uploadArea.innerHTML = `<img src="${imageDataUrl}" alt="Uploaded cloud photo">`;
+    uploadArea.classList.add('has-image');
+    hint.textContent = `${file.name} (${(file.size / 1024).toFixed(0)} KB) — click to change`;
+    updateSubmitState();
+  };
+  reader.readAsDataURL(file);
+}
+
+// --- Cloud type selection ---
+document.querySelectorAll('.cloud-option').forEach(opt => {
+  opt.addEventListener('click', (e) => {
+    if (e.target.classList.contains('info-icon')) return;
+    document.querySelectorAll('.cloud-option').forEach(o => o.classList.remove('selected'));
+    opt.classList.add('selected');
+    selectedClass = opt.dataset.class;
+    updateSubmitState();
+  });
+});
+
+// --- Info icons → modal ---
+document.querySelectorAll('.info-icon').forEach(icon => {
+  icon.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const cls = icon.dataset.class;
+    const info = CLASS_INFO[cls];
+    if (!info) return;
+
+    document.getElementById('modal-title').textContent = `${cls} — ${info.name}`;
+    document.getElementById('modal-desc').textContent = info.desc;
+    // Use a placeholder — replace with real example images when available
+    document.getElementById('modal-img').src = `data/examples/${cls.toLowerCase()}.jpg`;
+    document.getElementById('modal-img').onerror = function() {
+      this.src = 'data:image/svg+xml,' + encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" fill="%23eee"><rect width="300" height="200"/><text x="150" y="105" text-anchor="middle" fill="%23999" font-family="sans-serif" font-size="14">Example image coming soon</text></svg>`
+      );
+    };
+    document.getElementById('modal').classList.add('visible');
+  });
+});
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('visible');
+}
+
+document.getElementById('modal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+
+// --- Extra details toggle ---
+function toggleExtra(show) {
+  showExtra = show;
+  document.getElementById('extra-details').classList.toggle('visible', show);
+  document.getElementById('extra-yes').classList.toggle('active', show);
+  document.getElementById('extra-no').classList.toggle('active', !show);
+}
+
+// --- Direction picker ---
+document.querySelectorAll('.dir-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedDirection = btn.dataset.dir;
+  });
+});
+
+// --- Multi-label cloud tags ---
+const multiTagsContainer = document.getElementById('multi-tags');
+CLASSES.forEach(cls => {
+  const tag = document.createElement('span');
+  tag.className = 'multi-tag';
+  tag.textContent = cls;
+  tag.dataset.class = cls;
+  tag.addEventListener('click', () => {
+    if (selectedMultiTags.has(cls)) {
+      selectedMultiTags.delete(cls);
+      tag.classList.remove('selected');
+    } else {
+      selectedMultiTags.add(cls);
+      tag.classList.add('selected');
+    }
+  });
+  multiTagsContainer.appendChild(tag);
+});
+
+// --- Submit state ---
+function updateSubmitState() {
+  document.getElementById('submit-btn').disabled = !(imageFile && selectedClass);
+}
+
+// --- Draft save/load ---
+function getDraftData() {
+  return {
+    selectedClass,
+    selectedDirection,
+    showExtra,
+    multiTags: [...selectedMultiTags],
+    date: document.getElementById('photo-date').value,
+    time: document.getElementById('photo-time').value,
+    location: document.getElementById('photo-location').value,
+    conditions: document.getElementById('weather-conditions').value,
+    temperature: document.getElementById('temperature').value,
+    notes: document.getElementById('photo-notes').value,
+    imageDataUrl,
+    imageName: imageFile ? imageFile.name : null,
+    savedAt: new Date().toISOString(),
+  };
+}
+
+function saveDraft() {
+  const data = getDraftData();
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+    showStatus('Draft saved. You can close this page and come back later.', 'info');
+  } catch (e) {
+    // Image may be too large for localStorage
+    data.imageDataUrl = null;
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+    showStatus('Draft saved (image too large to store — you\'ll need to re-upload it).', 'info');
+  }
+}
+
+function loadDraft() {
+  const raw = localStorage.getItem(DRAFT_KEY);
+  if (!raw) return;
+  const data = JSON.parse(raw);
+
+  // Restore class selection
+  if (data.selectedClass) {
+    selectedClass = data.selectedClass;
+    document.querySelectorAll('.cloud-option').forEach(o => {
+      o.classList.toggle('selected', o.dataset.class === selectedClass);
+    });
+  }
+
+  // Restore image
+  if (data.imageDataUrl) {
+    imageDataUrl = data.imageDataUrl;
+    // Create a fake file reference for submit — actual file will need re-selection
+    uploadArea.innerHTML = `<img src="${imageDataUrl}" alt="Uploaded cloud photo">`;
+    uploadArea.classList.add('has-image');
+    hint.textContent = `${data.imageName || 'Restored from draft'} — click to change`;
+  }
+
+  // Restore extra details
+  if (data.showExtra) toggleExtra(true);
+  if (data.date) document.getElementById('photo-date').value = data.date;
+  if (data.time) document.getElementById('photo-time').value = data.time;
+  if (data.location) document.getElementById('photo-location').value = data.location;
+  if (data.conditions) document.getElementById('weather-conditions').value = data.conditions;
+  if (data.temperature) document.getElementById('temperature').value = data.temperature;
+  if (data.notes) document.getElementById('photo-notes').value = data.notes;
+
+  // Restore direction
+  if (data.selectedDirection) {
+    selectedDirection = data.selectedDirection;
+    document.querySelectorAll('.dir-btn').forEach(b => {
+      b.classList.toggle('selected', b.dataset.dir === selectedDirection);
+    });
+  }
+
+  // Restore multi-tags
+  if (data.multiTags) {
+    selectedMultiTags = new Set(data.multiTags);
+    document.querySelectorAll('.multi-tag').forEach(t => {
+      t.classList.toggle('selected', selectedMultiTags.has(t.dataset.class));
+    });
+  }
+
+  document.getElementById('draft-notice').classList.remove('visible');
+  updateSubmitState();
+  showStatus('Draft restored.', 'info');
+}
+
+function clearDraft() {
+  localStorage.removeItem(DRAFT_KEY);
+  document.getElementById('draft-notice').classList.remove('visible');
+}
+
+// Check for draft on load
+if (localStorage.getItem(DRAFT_KEY)) {
+  document.getElementById('draft-notice').classList.add('visible');
+}
+
+// --- Submit ---
+document.getElementById('submit-btn').addEventListener('click', async () => {
+  if (!imageFile || !selectedClass) return;
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Uploading...';
+
+  const formData = new FormData();
+  formData.append('image', imageFile);
+  formData.append('cloud_class', selectedClass);
+
+  if (showExtra) {
+    const extra = {
+      date: document.getElementById('photo-date').value || null,
+      time: document.getElementById('photo-time').value || null,
+      location: document.getElementById('photo-location').value || null,
+      direction: selectedDirection,
+      conditions: document.getElementById('weather-conditions').value || null,
+      temperature: document.getElementById('temperature').value || null,
+      notes: document.getElementById('photo-notes').value || null,
+      additional_classes: [...selectedMultiTags],
+    };
+    formData.append('metadata', JSON.stringify(extra));
+  }
+
+  if (!API_URL) {
+    showStatus('Upload endpoint not configured yet. Your data has been saved as a draft.', 'info');
+    saveDraft();
+    btn.disabled = false;
+    btn.textContent = 'Submit';
+    return;
+  }
+
+  try {
+    const headers = {};
+    const adminToken = localStorage.getItem('wxwords_admin_token');
+    if (adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
+
+    const res = await fetch(API_URL + '/upload', {
+      method: 'POST',
+      body: formData,
+      headers,
+    });
+
+    if (!res.ok) throw new Error(await res.text());
+
+    const result = await res.json();
+    showStatus('Photo uploaded successfully! Thank you for contributing.', 'success');
+    clearDraft();
+    resetForm();
+  } catch (e) {
+    showStatus('Upload failed: ' + e.message, 'error');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Submit';
+});
+
+function resetForm() {
+  imageFile = null;
+  imageDataUrl = null;
+  selectedClass = null;
+  selectedDirection = null;
+  selectedMultiTags.clear();
+  showExtra = false;
+
+  uploadArea.innerHTML = `<div class="placeholder" id="upload-placeholder"><strong>Drop a cloud photo here or click to browse</strong>JPEG or PNG, any size</div>`;
+  uploadArea.classList.remove('has-image');
+  hint.textContent = '';
+  document.querySelectorAll('.cloud-option').forEach(o => o.classList.remove('selected'));
+  document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.multi-tag').forEach(t => t.classList.remove('selected'));
+  toggleExtra(false);
+  document.getElementById('photo-date').value = '';
+  document.getElementById('photo-time').value = '';
+  document.getElementById('photo-location').value = '';
+  document.getElementById('weather-conditions').value = '';
+  document.getElementById('temperature').value = '';
+  document.getElementById('photo-notes').value = '';
+  fileInput.value = '';
+  updateSubmitState();
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById('status-msg');
+  el.textContent = msg;
+  el.className = 'status ' + type;
+  setTimeout(() => { el.className = 'status'; }, 8000);
+}
+
+// --- Admin auth ---
+// To log in as admin, add ?admin=YOUR_TOKEN to the URL once.
+// Token is stored in localStorage and sent with uploads.
+(function checkAdmin() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('admin')) {
+    localStorage.setItem('wxwords_admin_token', params.get('admin'));
+    // Clean URL
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+  const token = localStorage.getItem('wxwords_admin_token');
+  const el = document.getElementById('admin-status');
+  if (token) {
+    el.textContent = 'Logged in as admin';
+    el.style.color = '#4ecca3';
+  }
+})();
+</script>
+
+</body>
+</html>
