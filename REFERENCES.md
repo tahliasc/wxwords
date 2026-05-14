@@ -5,6 +5,30 @@ used in the WxWords cloud classification and weather forecast system.
 
 ---
 
+## Te Reo Māori Weather Knowledge
+
+### Apanui Skipper's PhD thesis
+
+The kupu huarere (weather words) page is compiled from the appendices of:
+
+> Skipper, A. (2020). *Ko te kawa tūpanapana i ngā hau tūpua a Tāwhiri-Mātea: The
+> Validation, Revitalisation and Enhancement of Māori Environmental Knowledge of
+> Weather and Climate* [PhD thesis, The University of Waikato]. Research Commons.
+> https://researchcommons.waikato.ac.nz/
+
+- **Author:** Apanui Skipper
+- **Year:** 2020
+- **Institution:** The University of Waikato
+- **Copyright:** Apanui Skipper; reproduction requires author permission per the
+  Research Commons copyright statement (Copyright Act 1994, NZ).
+
+Content reproduced from the thesis includes the classification tables, weather
+indicators, and te reo Māori glossary spanning Hauraki, Te Whānau-a-Apanui, and
+Ngāi Tahu kōrero. Each entry retains the original kaikōrero and source attribution
+exactly as recorded in the thesis.
+
+---
+
 ## Datasets
 
 ### CCSN (Cirrus Cumulus Stratus Nimbus) Database
