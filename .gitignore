@@ -1,9 +1,10 @@
 # Training data and model weights (too large for git)
-data/*
-# Keep the exported weather words JSON for the website
-!data/weather_words.json
+data/
 models/*.keras
 models/*.h5
+
+# Weather words content — pending permission to publish
+words.html
 
 # Keep the TF.js converted model (small enough for Pages)
 # models/tfjs/ is tracked
