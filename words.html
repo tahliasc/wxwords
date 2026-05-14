@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WxWords — Kupu Huarere | Weather Words</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #222;
+      line-height: 1.5;
+      padding: 1rem;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      padding: 1.5rem 0;
+      border-bottom: 2px solid #333;
+      margin-bottom: 1.5rem;
+    }
+
+    header h1 { font-size: 1.8rem; }
+    header .subtitle { color: #666; margin-top: 0.25rem; font-style: italic; }
+
+    nav.top-nav {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+
+    nav.top-nav a {
+      color: #0066cc;
+      text-decoration: none;
+      font-size: 0.9rem;
+      margin: 0 0.5rem;
+    }
+
+    nav.top-nav a:hover { text-decoration: underline; }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0.25rem;
+      border-bottom: 2px solid #ddd;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 0.6rem 1.2rem;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-size: 0.95rem;
+      color: #666;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      font-weight: 500;
+    }
+
+    .tab:hover { color: #333; }
+    .tab.active { color: #0066cc; border-bottom-color: #0066cc; font-weight: 600; }
+
+    /* Sub-tabs (smaller, lighter style) */
+    .subtabs {
+      display: flex;
+      gap: 0.25rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+    }
+
+    .subtab {
+      padding: 0.35rem 0.9rem;
+      cursor: pointer;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      color: #666;
+    }
+
+    .subtab:hover { background: #f0f0f0; }
+    .subtab.active { background: #0066cc; color: #fff; border-color: #0066cc; }
+
+    .iwi-tabs {
+      display: flex;
+      gap: 0.25rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      padding-left: 0.5rem;
+      border-left: 3px solid #e2b93b;
+    }
+
+    .iwi-tab {
+      padding: 0.3rem 0.7rem;
+      cursor: pointer;
+      background: none;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      color: #888;
+    }
+
+    .iwi-tab:hover { color: #333; }
+    .iwi-tab.active { background: #fff8e1; color: #8a6d00; border-color: #e2b93b; font-weight: 600; }
+
+    /* Search */
+    .search-row {
+      margin-bottom: 1rem;
+    }
+
+    .search-row input {
+      width: 100%;
+      padding: 0.6rem 0.9rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+
+    .search-row input:focus {
+      outline: none;
+      border-color: #0066cc;
+    }
+
+    .results-info {
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 0.75rem;
+    }
+
+    /* Rows */
+    .entries {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .entry {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+
+    .entry:hover { border-color: #aaa; }
+    .entry.expanded { border-color: #0066cc; }
+
+    .entry-header {
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .entry-maori {
+      font-weight: 700;
+      color: #0d2c54;
+      font-size: 1rem;
+    }
+
+    .entry-english {
+      color: #555;
+      font-size: 0.9rem;
+      flex: 1;
+    }
+
+    .entry-toggle {
+      color: #999;
+      font-size: 0.75rem;
+      transition: transform 0.15s;
+    }
+
+    .entry.expanded .entry-toggle {
+      transform: rotate(90deg);
+    }
+
+    .entry-detail {
+      display: none;
+      padding: 0 1rem 1rem 1rem;
+      border-top: 1px solid #eee;
+      background: #fafafa;
+    }
+
+    .entry.expanded .entry-detail {
+      display: block;
+    }
+
+    .detail-field {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      font-size: 0.88rem;
+    }
+
+    .detail-label {
+      font-weight: 600;
+      color: #666;
+      min-width: 110px;
+      flex-shrink: 0;
+    }
+
+    .detail-value { color: #333; }
+
+    .detail-source {
+      font-size: 0.8rem;
+      color: #888;
+      font-style: italic;
+    }
+
+    /* Glossary specific */
+    .glossary-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 0.5rem;
+    }
+
+    .glossary-entry {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 0.6rem 0.8rem;
+    }
+
+    .glossary-term {
+      font-weight: 600;
+      color: #0d2c54;
+      font-size: 0.9rem;
+    }
+
+    .glossary-def {
+      color: #555;
+      font-size: 0.85rem;
+      margin-top: 0.15rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #888;
+    }
+
+    .empty-state h3 { color: #555; margin-bottom: 0.5rem; }
+
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: #888;
+    }
+
+    .attribution-note {
+      background: #fff8e1;
+      border-left: 3px solid #e2b93b;
+      padding: 0.6rem 0.9rem;
+      margin-bottom: 1rem;
+      border-radius: 4px;
+      font-size: 0.82rem;
+      color: #5a4500;
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 0.5rem; }
+      .tabs { font-size: 0.85rem; }
+      .tab { padding: 0.5rem 0.7rem; }
+      .glossary-list { grid-template-columns: 1fr; }
+      .detail-field { flex-direction: column; gap: 0.1rem; }
+      .detail-label { min-width: auto; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Kupu Huarere &nbsp;|&nbsp; Weather Words</h1>
+  <p class="subtitle">Māori weather terms, indicators, and glossary</p>
+</header>
+
+<nav class="top-nav">
+  <a href="index.html">&larr; Forecast</a>
+  <a href="upload.html">Upload a cloud photo</a>
+</nav>
+
+<div class="attribution-note">
+  These taonga come from kaikōrero across <strong>Hauraki</strong>, <strong>Te Whānau-a-Apanui</strong>,
+  and <strong>Ngāi Tahu</strong>. Each entry credits its source — please honour the attribution.
+</div>
+
+<!-- Main tabs -->
+<div class="tabs" id="main-tabs">
+  <button class="tab active" data-tab="Classifications">Classifications</button>
+  <button class="tab" data-tab="Indicators">Indicators</button>
+  <button class="tab" data-tab="Glossary">Glossary</button>
+</div>
+
+<!-- Sub-tabs (subcategories) -->
+<div class="subtabs" id="subtabs"></div>
+
+<!-- Iwi tabs -->
+<div class="iwi-tabs" id="iwi-tabs"></div>
+
+<!-- Search -->
+<div class="search-row">
+  <input type="search" id="search" placeholder="Search this table...">
+</div>
+
+<div class="results-info" id="results-info"></div>
+
+<div id="content" class="loading">Loading...</div>
+
+<script>
+let DATA = null;
+let state = {
+  mainTab: 'Classifications',
+  subTab: null,
+  iwiTab: null,
+  search: '',
+};
+
+// --- Load data ---
+async function init() {
+  try {
+    const res = await fetch('data/weather_words.json');
+    DATA = await res.json();
+  } catch (e) {
+    document.getElementById('content').innerHTML =
+      '<div class="empty-state"><h3>Could not load data</h3><p>Run <code>python scripts/export_tables.py</code> to generate it.</p></div>';
+    return;
+  }
+
+  // Default subTab/iwiTab for Classifications
+  setMainTab('Classifications');
+  setupListeners();
+}
+
+function setupListeners() {
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => setMainTab(btn.dataset.tab));
+  });
+
+  document.getElementById('search').addEventListener('input', (e) => {
+    state.search = e.target.value.toLowerCase().trim();
+    render();
+  });
+}
+
+function setMainTab(tab) {
+  state.mainTab = tab;
+  state.subTab = null;
+  state.iwiTab = null;
+  state.search = '';
+
+  document.querySelectorAll('.tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  document.getElementById('search').value = '';
+
+  if (tab === 'Glossary') {
+    document.getElementById('subtabs').innerHTML = '';
+    document.getElementById('iwi-tabs').innerHTML = '';
+  } else {
+    renderSubtabs();
+  }
+  render();
+}
+
+function renderSubtabs() {
+  const cat = DATA.categories[state.mainTab];
+  const subcategories = Object.keys(cat);
+  state.subTab = subcategories[0];
+
+  const html = subcategories.map(sub => `
+    <button class="subtab ${sub === state.subTab ? 'active' : ''}" data-sub="${sub}">${sub}</button>
+  `).join('');
+  document.getElementById('subtabs').innerHTML = html;
+
+  document.querySelectorAll('.subtab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.subTab = btn.dataset.sub;
+      state.iwiTab = null;
+      document.querySelectorAll('.subtab').forEach(b => b.classList.toggle('active', b === btn));
+      renderIwiTabs();
+      render();
+    });
+  });
+
+  renderIwiTabs();
+}
+
+function renderIwiTabs() {
+  const cat = DATA.categories[state.mainTab][state.subTab];
+  const iwiList = Object.keys(cat);
+  state.iwiTab = iwiList[0];
+
+  const html = iwiList.map(iwi => `
+    <button class="iwi-tab ${iwi === state.iwiTab ? 'active' : ''}" data-iwi="${iwi}">${iwi}</button>
+  `).join('');
+  document.getElementById('iwi-tabs').innerHTML = html;
+
+  document.querySelectorAll('.iwi-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.iwiTab = btn.dataset.iwi;
+      document.querySelectorAll('.iwi-tab').forEach(b => b.classList.toggle('active', b === btn));
+      render();
+    });
+  });
+}
+
+function render() {
+  if (state.mainTab === 'Glossary') {
+    renderGlossary();
+  } else {
+    renderTable();
+  }
+}
+
+function matchesSearch(text, query) {
+  if (!query) return true;
+  return (text || '').toLowerCase().includes(query);
+}
+
+function entryMatches(entry, query) {
+  if (!query) return true;
+  return Object.values(entry).some(v => matchesSearch(v, query));
+}
+
+function renderTable() {
+  const sheet = DATA.categories[state.mainTab][state.subTab][state.iwiTab];
+  if (!sheet) {
+    document.getElementById('content').innerHTML = '<div class="empty-state">No data for this selection.</div>';
+    return;
+  }
+
+  const filtered = sheet.rows.filter(r => entryMatches(r, state.search));
+
+  document.getElementById('results-info').textContent =
+    state.search
+      ? `${filtered.length} of ${sheet.rows.length} entries matching "${state.search}"`
+      : `${sheet.rows.length} entries · ${sheet.sheet}`;
+
+  if (filtered.length === 0) {
+    document.getElementById('content').innerHTML = `
+      <div class="empty-state">
+        <h3>No matches</h3>
+        <p>Try a different search term.</p>
+      </div>`;
+    return;
+  }
+
+  const html = `<div class="entries">${filtered.map((entry, idx) => renderEntry(entry, idx)).join('')}</div>`;
+  document.getElementById('content').innerHTML = html;
+  document.getElementById('content').classList.remove('loading');
+
+  // Wire up expansion
+  document.querySelectorAll('.entry-header').forEach((hdr, i) => {
+    hdr.addEventListener('click', () => {
+      hdr.parentElement.classList.toggle('expanded');
+    });
+  });
+}
+
+function renderEntry(entry, idx) {
+  const maori = entry['Māori Name'] || '';
+  const english = entry['English / Scientific Name'] || '';
+
+  // Compose detail fields (skip the two we showed in header + nulls)
+  const skip = new Set(['Māori Name', 'English / Scientific Name']);
+  const detailFields = Object.entries(entry)
+    .filter(([k, v]) => v && !skip.has(k))
+    .map(([k, v]) => {
+      const isSource = k === 'Ahunga / Source';
+      return `
+        <div class="detail-field">
+          <div class="detail-label">${escapeHtml(k)}</div>
+          <div class="detail-value ${isSource ? 'detail-source' : ''}">${escapeHtml(v)}</div>
+        </div>`;
+    }).join('');
+
+  return `
+    <div class="entry">
+      <div class="entry-header">
+        <span class="entry-maori">${escapeHtml(maori)}</span>
+        ${english ? `<span class="entry-english">${escapeHtml(english)}</span>` : '<span class="entry-english"></span>'}
+        <span class="entry-toggle">&#9654;</span>
+      </div>
+      <div class="entry-detail">
+        ${detailFields}
+      </div>
+    </div>`;
+}
+
+function renderGlossary() {
+  const filtered = DATA.glossary.filter(g => entryMatches(g, state.search));
+
+  document.getElementById('results-info').textContent =
+    state.search
+      ? `${filtered.length} of ${DATA.glossary.length} terms matching "${state.search}"`
+      : `${DATA.glossary.length} terms`;
+
+  if (filtered.length === 0) {
+    document.getElementById('content').innerHTML = `
+      <div class="empty-state"><h3>No matches</h3></div>`;
+    return;
+  }
+
+  const html = `<div class="glossary-list">${filtered.map(g => `
+    <div class="glossary-entry">
+      <div class="glossary-term">${escapeHtml(g['Te Reo Māori Term'] || '')}</div>
+      <div class="glossary-def">${escapeHtml(g['Definition / English Translation'] || '')}</div>
+    </div>
+  `).join('')}</div>`;
+
+  document.getElementById('content').innerHTML = html;
+  document.getElementById('content').classList.remove('loading');
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+init();
+</script>
+
+</body>
+</html>

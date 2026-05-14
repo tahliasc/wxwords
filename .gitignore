@@ -1,5 +1,7 @@
 # Training data and model weights (too large for git)
-data/
+data/*
+# Keep the exported weather words JSON for the website
+!data/weather_words.json
 models/*.keras
 models/*.h5
 
