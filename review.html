@@ -348,16 +348,40 @@ let adminToken = null;
 })();
 
 async function init() {
-  // Load model + sky mask + class names in parallel
+  // Show progress in empty state
+  const showStatus = (msg, isError = false) => {
+    const el = document.getElementById('empty-state');
+    if (el) el.innerHTML = `<h2>${msg}</h2>${isError ? '<p style="color:#e88;margin-top:1rem">Check browser console for details.</p>' : ''}`;
+  };
+
+  // Check TF.js loaded
+  if (typeof tf === 'undefined') {
+    showStatus('TensorFlow.js failed to load', true);
+    return;
+  }
+  console.log('TF.js version:', tf.version.tfjs);
+
+  // Load model (separate from mask so failures are isolated)
+  showStatus('Loading classifier model (~25 MB)...');
   try {
-    [cloudModel] = await Promise.all([
-      tf.loadLayersModel('models/tfjs/model.json'),
-      loadSkyMask(),
-    ]);
+    cloudModel = await tf.loadLayersModel('models/tfjs/model.json');
+    console.log('Model loaded. Input shape:', cloudModel.inputs[0].shape);
   } catch (e) {
     console.error('Model load failed:', e);
+    showStatus('Could not load classifier model: ' + e.message, true);
   }
 
+  // Load sky mask
+  showStatus('Loading sky mask...');
+  try {
+    await loadSkyMask();
+    console.log('Sky mask loaded.');
+  } catch (e) {
+    console.error('Sky mask load failed:', e);
+    showStatus('Could not load sky mask: ' + (e.message || 'image error'), true);
+  }
+
+  showStatus('Loading captures...');
   await loadCaptures();
   setupListeners();
 }
