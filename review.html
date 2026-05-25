@@ -305,6 +305,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
 <script>
 const API = 'https://wxwords-upload-api.tahliasc.workers.dev';
 const CLASSES = ["Ac", "As", "Asperitas", "Cb", "Cc", "Ci", "Clear", "Cs", "Ct", "Cu", "Fog", "Lenticular", "Mammatus", "Ns", "Rainbow", "Sc", "St"];
@@ -729,13 +730,8 @@ async function saveLabels() {
 }
 
 window.navigate = navigate;
-</script>
 
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
-<script>
-  // Init after tfjs loads
-  if (typeof tf !== 'undefined') init();
-  else window.addEventListener('load', init);
+init();
 </script>
 
 </body>
