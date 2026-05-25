@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WxWords — Weekly Cloud Review</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: #16213e;
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #333;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .topbar h1 { font-size: 1.2rem; }
+    .topbar a { color: #4ecca3; text-decoration: none; font-size: 0.85rem; }
+
+    .info {
+      display: flex;
+      gap: 1.5rem;
+      font-size: 0.85rem;
+      color: #aaa;
+    }
+    .info span { color: #4ecca3; font-weight: 600; }
+
+    .controls {
+      background: #16213e;
+      padding: 0.5rem 1.5rem;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+      border-bottom: 1px solid #333;
+    }
+
+    .controls label { font-size: 0.8rem; color: #aaa; margin-right: 0.5rem; }
+
+    .filter-btn {
+      padding: 0.25rem 0.6rem;
+      background: #2a2a4a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    .filter-btn:hover { background: #3a3a5a; }
+    .filter-btn.active { background: #4ecca3; color: #111; border-color: #4ecca3; }
+
+    .main {
+      display: flex;
+      height: calc(100vh - 90px);
+    }
+
+    /* Image panel */
+    .image-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      position: relative;
+      overflow: auto;
+    }
+
+    .webcam-stack {
+      position: relative;
+      max-width: 100%;
+      max-height: 70vh;
+      line-height: 0;
+    }
+
+    .webcam-stack img {
+      max-width: 100%;
+      max-height: 70vh;
+      width: auto;
+      height: auto;
+      display: block;
+      border-radius: 6px;
+      border: 2px solid #333;
+    }
+
+    #overlay-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    #overlay-canvas.visible { opacity: 0.55; }
+
+    .image-info {
+      margin-top: 0.75rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: #999;
+    }
+    .image-info .timestamp { color: #ccc; font-weight: 500; }
+
+    .summary-box {
+      margin-top: 0.75rem;
+      padding: 0.75rem 1.25rem;
+      background: #16213e;
+      border-radius: 6px;
+      border: 1px solid #333;
+      max-width: 90%;
+    }
+    .summary-label { font-size: 0.8rem; color: #888; margin-bottom: 0.3rem; }
+    .summary-classes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      font-size: 0.85rem;
+    }
+    .class-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.2rem 0.5rem;
+      background: #2a2a4a;
+      border-radius: 4px;
+    }
+    .class-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .nav-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      align-items: center;
+    }
+
+    .nav-btn {
+      padding: 0.5rem 1.25rem;
+      background: #2a2a4a;
+      border: 1px solid #555;
+      border-radius: 4px;
+      color: #ddd;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .nav-btn:hover { background: #3a3a5a; }
+    .nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Review panel */
+    .review-panel {
+      width: 320px;
+      background: #16213e;
+      border-left: 1px solid #333;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    .review-panel h3 {
+      font-size: 0.9rem;
+      color: #aaa;
+      margin-bottom: 0.75rem;
+    }
+
+    .panel-section {
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #333;
+    }
+
+    .panel-section:last-child { border-bottom: none; }
+
+    .class-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      width: 100%;
+      padding: 0.4rem 0.6rem;
+      margin-bottom: 0.3rem;
+      background: #2a2a4a;
+      border: 2px solid #444;
+      border-radius: 6px;
+      color: #ddd;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .class-btn:hover { background: #3a3a5a; border-color: #666; }
+    .class-btn.selected {
+      border-color: #4ecca3;
+      background: #1a3a2a;
+      color: #4ecca3;
+      font-weight: 600;
+    }
+    .class-btn .swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .save-btn {
+      width: 100%;
+      padding: 0.6rem;
+      background: #4ecca3;
+      border: none;
+      border-radius: 6px;
+      color: #111;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-top: 0.5rem;
+    }
+    .save-btn:hover { background: #3dbb92; }
+    .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .toggle-btn {
+      width: 100%;
+      padding: 0.4rem;
+      background: #2a2a4a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    .toggle-btn:hover { background: #3a3a5a; }
+    .toggle-btn.active { background: #0066cc; color: #fff; border-color: #0066cc; }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 80vh;
+      color: #666;
+      text-align: center;
+      padding: 2rem;
+    }
+    .empty-state h2 { color: #aaa; margin-bottom: 1rem; }
+    .empty-state code { background: #2a2a4a; padding: 0.2rem 0.5rem; border-radius: 3px; }
+
+    .auth-banner {
+      background: #4a2a2a;
+      color: #ffaaaa;
+      padding: 0.5rem 1.5rem;
+      text-align: center;
+      font-size: 0.85rem;
+    }
+
+    .label-status {
+      font-size: 0.75rem;
+      color: #888;
+      margin-top: 0.4rem;
+    }
+    .label-status.has-labels { color: #4ecca3; }
+
+    .progress-row { font-size: 0.78rem; color: #888; margin-bottom: 0.3rem; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Weekly Cloud Review</h1>
+  <div class="info">
+    <div>Total: <span id="count-total">0</span></div>
+    <div>Labelled: <span id="count-labelled">0</span></div>
+    <div>Day filter: <span id="day-filter-active">7d</span></div>
+  </div>
+  <a href="index.html">&larr; Forecast</a>
+</div>
+
+<div id="auth-banner" class="auth-banner" style="display:none">
+  Admin login required to save labels. Add <code>?admin=YOUR_TOKEN</code> to the URL.
+</div>
+
+<div class="controls">
+  <label>Days:</label>
+  <button class="filter-btn active" data-days="1">1d</button>
+  <button class="filter-btn" data-days="3">3d</button>
+  <button class="filter-btn" data-days="7">7d</button>
+  <label style="margin-left:1rem">Show:</label>
+  <button class="filter-btn active" data-filter="all">All</button>
+  <button class="filter-btn" data-filter="unlabelled">Unlabelled</button>
+  <button class="filter-btn" data-filter="labelled">Labelled</button>
+</div>
+
+<div class="main" id="main-area">
+  <div class="empty-state" id="empty-state">
+    <h2>Loading captures...</h2>
+  </div>
+</div>
+
+<script>
+const API = 'https://wxwords-upload-api.tahliasc.workers.dev';
+const CLASSES = ["Ac", "As", "Asperitas", "Cb", "Cc", "Ci", "Clear", "Cs", "Ct", "Cu", "Fog", "Lenticular", "Mammatus", "Ns", "Rainbow", "Sc", "St"];
+
+const CLASS_COLORS = {
+  Ac:[220,220,240], As:[180,180,190], Asperitas:[80,140,160],
+  Cb:[60,50,80], Cc:[250,245,200], Ci:[180,220,255], Clear:[120,180,255],
+  Cs:[230,230,250], Ct:[255,100,80], Cu:[255,255,255], Fog:[180,160,140],
+  Lenticular:[180,230,100], Mammatus:[150,100,180], Ns:[80,70,90],
+  Rainbow:[255,100,200], Sc:[160,170,190], St:[140,150,170],
+};
+
+const PROCESS_WIDTH = 960;
+const WINDOW_SIZE = 192;
+const STEP = 96;
+const SKY_THRESHOLD = 0.6;
+const MODEL_INPUT_SIZE = 224;
+
+let captures = [];
+let filteredIdx = 0;
+let dayFilter = 1;
+let statusFilter = 'all';
+let cloudModel = null;
+let skyMask = null;
+let currentPredictions = null;
+let currentCorrections = {}; // { className: true }
+let adminToken = null;
+
+// --- Admin auth ---
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('admin')) {
+    localStorage.setItem('wxwords_admin_token', params.get('admin'));
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+  adminToken = localStorage.getItem('wxwords_admin_token');
+  if (!adminToken) {
+    document.getElementById('auth-banner').style.display = 'block';
+  }
+})();
+
+async function init() {
+  // Load model + sky mask + class names in parallel
+  try {
+    [cloudModel] = await Promise.all([
+      tf.loadLayersModel('models/tfjs/model.json'),
+      loadSkyMask(),
+    ]);
+  } catch (e) {
+    console.error('Model load failed:', e);
+  }
+
+  await loadCaptures();
+  setupListeners();
+}
+
+async function loadSkyMask() {
+  return new Promise((resolve, reject) => {
+    const maskImg = new Image();
+    maskImg.crossOrigin = 'anonymous';
+    maskImg.onload = () => {
+      const aspect = maskImg.naturalHeight / maskImg.naturalWidth;
+      const w = PROCESS_WIDTH;
+      const h = Math.round(w * aspect);
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(maskImg, 0, 0, w, h);
+      skyMask = c.getContext('2d').getImageData(0, 0, w, h);
+      resolve();
+    };
+    maskImg.onerror = reject;
+    maskImg.src = 'models/sky_mask.png';
+  });
+}
+
+async function loadCaptures() {
+  const res = await fetch(`${API}/captures?days=${dayFilter}`);
+  const data = await res.json();
+  captures = data.captures;
+  document.getElementById('count-total').textContent = captures.length;
+  document.getElementById('count-labelled').textContent = captures.filter(c => c.hasLabels).length;
+  document.getElementById('day-filter-active').textContent = `${dayFilter}d`;
+  applyFilters();
+}
+
+function applyFilters() {
+  if (statusFilter === 'unlabelled') {
+    captures = captures.filter(c => !c.hasLabels);
+  } else if (statusFilter === 'labelled') {
+    captures = captures.filter(c => c.hasLabels);
+  }
+  filteredIdx = 0;
+  render();
+}
+
+function setupListeners() {
+  document.querySelectorAll('.filter-btn[data-days]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      document.querySelectorAll('.filter-btn[data-days]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      dayFilter = parseInt(btn.dataset.days);
+      await loadCaptures();
+    });
+  });
+
+  document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      document.querySelectorAll('.filter-btn[data-filter]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      statusFilter = btn.dataset.filter;
+      await loadCaptures();
+    });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'ArrowRight' || e.key === 'n') navigate(1);
+    if (e.key === 'ArrowLeft' || e.key === 'p') navigate(-1);
+  });
+}
+
+function navigate(dir) {
+  filteredIdx = Math.max(0, Math.min(captures.length - 1, filteredIdx + dir));
+  render();
+}
+
+async function render() {
+  if (captures.length === 0) {
+    document.getElementById('main-area').innerHTML = `
+      <div class="empty-state">
+        <h2>No captures yet</h2>
+        <p>The webcam capture cron is running every 30 minutes. Check back soon!</p>
+      </div>`;
+    return;
+  }
+
+  const cap = captures[filteredIdx];
+  const imgUrl = `${API}/capture/${cap.key}`;
+
+  const html = `
+    <div class="image-panel">
+      <div class="webcam-stack">
+        <img id="webcam-img" crossorigin="anonymous" src="${imgUrl}" alt="">
+        <canvas id="overlay-canvas"></canvas>
+      </div>
+      <div class="image-info">
+        <div class="timestamp">${new Date(cap.ts).toLocaleString()}</div>
+        <div>${filteredIdx + 1} of ${captures.length}</div>
+        <div class="label-status ${cap.hasLabels ? 'has-labels' : ''}">
+          ${cap.hasLabels ? '✓ Already labelled' : 'Not labelled yet'}
+        </div>
+      </div>
+      <div class="summary-box">
+        <div class="summary-label">Model prediction (sliding window):</div>
+        <div class="summary-classes" id="summary-classes">
+          <span style="color:#888">Classifying...</span>
+        </div>
+      </div>
+      <div class="nav-row">
+        <button class="nav-btn" onclick="navigate(-1)">&larr; Prev (P)</button>
+        <button class="nav-btn" onclick="navigate(1)">Next (N) &rarr;</button>
+      </div>
+    </div>
+    <div class="review-panel">
+      <div class="panel-section">
+        <h3>View</h3>
+        <button class="toggle-btn" id="overlay-toggle">Show classification overlay</button>
+      </div>
+      <div class="panel-section">
+        <h3>Confirm clouds visible in this image</h3>
+        <p class="progress-row">Tap each class you can see. Pre-selected = model's predictions.</p>
+        <div id="class-buttons"></div>
+      </div>
+      <div class="panel-section">
+        <button class="save-btn" id="save-btn" ${adminToken ? '' : 'disabled'}>
+          ${adminToken ? 'Save labels' : 'Admin login required'}
+        </button>
+      </div>
+    </div>`;
+
+  document.getElementById('main-area').innerHTML = html;
+
+  const img = document.getElementById('webcam-img');
+  await new Promise(r => { img.onload = r; img.onerror = r; });
+  await classifyImage(img);
+
+  // Wire up overlay toggle
+  document.getElementById('overlay-toggle').addEventListener('click', (e) => {
+    const overlay = document.getElementById('overlay-canvas');
+    overlay.classList.toggle('visible');
+    e.target.classList.toggle('active');
+    e.target.textContent = overlay.classList.contains('visible')
+      ? 'Hide classification overlay'
+      : 'Show classification overlay';
+  });
+
+  document.getElementById('save-btn').addEventListener('click', saveLabels);
+
+  // Load existing labels if present
+  if (cap.hasLabels) {
+    const id = cap.key.replace('webcam/', '').replace('.jpg', '');
+    try {
+      const labelRes = await fetch(`${API}/capture/labels/${id}.json`);
+      if (labelRes.ok) {
+        const data = await labelRes.json();
+        currentCorrections = {};
+        (data.confirmed_classes || []).forEach(c => currentCorrections[c] = true);
+        renderClassButtons();
+      }
+    } catch {}
+  }
+}
+
+async function classifyImage(img) {
+  if (!cloudModel || !skyMask) {
+    document.getElementById('summary-classes').innerHTML = '<span style="color:#e88">Classifier not loaded</span>';
+    return;
+  }
+
+  const procW = PROCESS_WIDTH;
+  const aspect = img.naturalHeight / img.naturalWidth;
+  const procH = Math.round(procW * aspect);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = procW;
+  canvas.height = procH;
+  canvas.getContext('2d').drawImage(img, 0, 0, procW, procH);
+
+  // Find sky-containing windows
+  const windows = [];
+  const samplesPerWindow = 16;
+  const sampleStep = WINDOW_SIZE / 4;
+  for (let y = 0; y + WINDOW_SIZE <= procH; y += STEP) {
+    for (let x = 0; x + WINDOW_SIZE <= procW; x += STEP) {
+      let skyCount = 0;
+      for (let dy = 0; dy < WINDOW_SIZE; dy += sampleStep) {
+        for (let dx = 0; dx < WINDOW_SIZE; dx += sampleStep) {
+          const idx = ((y + dy) * procW + (x + dx)) * 4;
+          if (skyMask.data[idx] > 128) skyCount++;
+        }
+      }
+      if (skyCount / samplesPerWindow >= SKY_THRESHOLD) {
+        windows.push({ x, y });
+      }
+    }
+  }
+
+  if (windows.length === 0) {
+    document.getElementById('summary-classes').innerHTML = '<span style="color:#888">No sky visible</span>';
+    return;
+  }
+
+  const classTotals = new Array(CLASSES.length).fill(0);
+  const windowPredictions = [];
+
+  for (const win of windows) {
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = MODEL_INPUT_SIZE;
+    cropCanvas.height = MODEL_INPUT_SIZE;
+    cropCanvas.getContext('2d').drawImage(
+      canvas, win.x, win.y, WINDOW_SIZE, WINDOW_SIZE,
+      0, 0, MODEL_INPUT_SIZE, MODEL_INPUT_SIZE
+    );
+
+    const probs = tf.tidy(() => {
+      let t = tf.browser.fromPixels(cropCanvas);
+      t = t.toFloat().div(127.5).sub(1.0);
+      t = t.expandDims(0);
+      return cloudModel.predict(t);
+    });
+    const arr = await probs.data();
+    probs.dispose();
+
+    const maxIdx = arr.indexOf(Math.max(...arr));
+    windowPredictions.push({
+      x: win.x, y: win.y,
+      classIdx: maxIdx,
+      className: CLASSES[maxIdx],
+      confidence: arr[maxIdx],
+    });
+    for (let c = 0; c < CLASSES.length; c++) classTotals[c] += arr[c];
+  }
+
+  const total = classTotals.reduce((a,b) => a+b, 0);
+  const classFractions = classTotals.map(c => c / total);
+
+  currentPredictions = {
+    windows: windowPredictions,
+    classFractions,
+    procW, procH,
+  };
+
+  // Pre-select top predictions
+  currentCorrections = {};
+  const ranked = classFractions
+    .map((f, i) => ({ name: CLASSES[i], frac: f }))
+    .sort((a,b) => b.frac - a.frac)
+    .filter(c => c.frac >= 0.1);
+  ranked.forEach(c => currentCorrections[c.name] = true);
+
+  renderSummary(classFractions);
+  renderOverlay(windowPredictions, procW, procH, img);
+  renderClassButtons();
+}
+
+function renderSummary(fractions) {
+  const ranked = fractions
+    .map((f, i) => ({ name: CLASSES[i], frac: f }))
+    .sort((a,b) => b.frac - a.frac)
+    .filter(c => c.frac >= 0.05);
+
+  const html = ranked.slice(0, 6).map(c => {
+    const color = CLASS_COLORS[c.name] || [200,200,200];
+    return `<div class="class-chip">
+      <div class="class-swatch" style="background:rgb(${color.join(',')})"></div>
+      ${c.name} ${Math.round(c.frac * 100)}%
+    </div>`;
+  }).join('');
+  document.getElementById('summary-classes').innerHTML = html || '<span style="color:#888">No strong predictions</span>';
+}
+
+function renderOverlay(windows, procW, procH, img) {
+  const overlay = document.getElementById('overlay-canvas');
+  overlay.width = img.naturalWidth;
+  overlay.height = img.naturalHeight;
+  const ctx = overlay.getContext('2d');
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+  const scaleX = img.naturalWidth / procW;
+  const scaleY = img.naturalHeight / procH;
+  const winW = WINDOW_SIZE * scaleX;
+  const winH = WINDOW_SIZE * scaleY;
+
+  for (const win of windows) {
+    const color = CLASS_COLORS[win.className] || [200,200,200];
+    const cx = win.x * scaleX + winW / 2;
+    const cy = win.y * scaleY + winH / 2;
+    const r = Math.max(winW, winH) / 2;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    const alpha = Math.min(0.7, win.confidence * 1.5);
+    grad.addColorStop(0, `rgba(${color[0]},${color[1]},${color[2]},${alpha})`);
+    grad.addColorStop(1, `rgba(${color[0]},${color[1]},${color[2]},0)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(win.x * scaleX, win.y * scaleY, winW, winH);
+  }
+}
+
+function renderClassButtons() {
+  const container = document.getElementById('class-buttons');
+  const html = CLASSES.map(cls => {
+    const color = CLASS_COLORS[cls] || [200,200,200];
+    const selected = currentCorrections[cls];
+    return `<button class="class-btn ${selected ? 'selected' : ''}" data-class="${cls}">
+      <div class="swatch" style="background:rgb(${color.join(',')})"></div>
+      ${cls}
+    </button>`;
+  }).join('');
+  container.innerHTML = html;
+
+  container.querySelectorAll('.class-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cls = btn.dataset.class;
+      if (currentCorrections[cls]) {
+        delete currentCorrections[cls];
+      } else {
+        currentCorrections[cls] = true;
+      }
+      btn.classList.toggle('selected');
+    });
+  });
+}
+
+async function saveLabels() {
+  if (!adminToken) return;
+  const cap = captures[filteredIdx];
+  const id = cap.key.replace('webcam/', '').replace('.jpg', '');
+
+  const body = {
+    confirmed_classes: Object.keys(currentCorrections),
+    model_predictions: currentPredictions ? {
+      class_fractions: currentPredictions.classFractions.map((f, i) => ({
+        class: CLASSES[i],
+        fraction: f,
+      })).filter(c => c.fraction >= 0.02),
+      window_count: currentPredictions.windows.length,
+    } : null,
+  };
+
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    const res = await fetch(`${API}/labels/${id}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) throw new Error(await res.text());
+
+    btn.textContent = '✓ Saved';
+    setTimeout(() => {
+      btn.textContent = 'Save labels';
+      btn.disabled = false;
+    }, 1500);
+
+    captures[filteredIdx].hasLabels = true;
+    document.getElementById('count-labelled').textContent =
+      captures.filter(c => c.hasLabels).length;
+  } catch (e) {
+    btn.textContent = 'Save failed';
+    console.error('Save error:', e);
+    setTimeout(() => {
+      btn.textContent = 'Save labels';
+      btn.disabled = false;
+    }, 2000);
+  }
+}
+
+window.navigate = navigate;
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<script>
+  // Init after tfjs loads
+  if (typeof tf !== 'undefined') init();
+  else window.addEventListener('load', init);
+</script>
+
+</body>
+</html>

@@ -92,7 +92,56 @@
       margin-top: 0.4rem;
     }
 
-    /* Cloud classification placeholder */
+    /* Webcam + overlay */
+    .webcam-stack {
+      position: relative;
+      width: 100%;
+      line-height: 0;
+    }
+
+    .webcam-stack img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    #overlay-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    #overlay-canvas.visible {
+      opacity: 0.55;
+    }
+
+    .webcam-controls {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      margin-top: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .webcam-controls button {
+      padding: 0.3rem 0.7rem;
+      background: #333;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    .webcam-controls button:hover { background: #555; }
+    .webcam-controls button.active { background: #0066cc; }
+
+    /* Cloud classification result */
     .cloud-result {
       margin-top: 1rem;
       padding: 0.75rem;
@@ -101,28 +150,67 @@
       border: 1px solid #e9ecef;
     }
 
-    .cloud-type {
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: #2c3e50;
+    .cloud-summary {
+      font-size: 0.9rem;
+      color: #444;
+      margin-bottom: 0.5rem;
     }
 
-    .cloud-confidence {
-      font-size: 0.85rem;
+    .cloud-breakdown {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 0.4rem;
+      font-size: 0.82rem;
+    }
+
+    .cloud-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.5rem;
+      background: #fff;
+      border-radius: 4px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .cloud-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      flex-shrink: 0;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .cloud-item-label {
+      flex: 1;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .cloud-item-pct {
       color: #666;
-      margin-top: 0.15rem;
-    }
-
-    .cloud-desc {
-      font-size: 0.85rem;
-      color: #555;
-      margin-top: 0.25rem;
+      font-size: 0.78rem;
     }
 
     .cloud-pending {
       font-size: 0.9rem;
       color: #888;
       font-style: italic;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 0.4rem;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: #0066cc;
+      transition: width 0.15s;
     }
 
     /* Te reo section */
@@ -195,7 +283,10 @@
 <header>
   <h1>WxWords</h1>
   <p>&#332;tautahi Christchurch — Weather Forecast</p>
-  <nav style="margin-top:0.5rem"><a href="upload.html" style="color:#0066cc;font-size:0.9rem;text-decoration:none">Upload a cloud photo &rarr;</a></nav>
+  <nav style="margin-top:0.5rem">
+    <a href="upload.html" style="color:#0066cc;font-size:0.9rem;text-decoration:none;margin:0 0.5rem">Upload a cloud photo &rarr;</a>
+    <a href="review.html" style="color:#0066cc;font-size:0.9rem;text-decoration:none;margin:0 0.5rem">Weekly review &rarr;</a>
+  </nav>
 </header>
 
 <div class="main-grid">
@@ -231,19 +322,28 @@
     <div class="panel">
       <h2>Current Sky — Webcam</h2>
       <div class="webcam-container">
-        <img id="webcam-img"
-             src="https://imgproxy.windy.com/_/full/plain/current/1672279274/original.jpg"
-             alt="Christchurch webcam — Coastal Burwood">
+        <div class="webcam-stack">
+          <img id="webcam-img"
+               crossorigin="anonymous"
+               src="https://imgproxy.windy.com/_/full/plain/current/1672279274/original.jpg"
+               alt="Christchurch webcam — Coastal Burwood">
+          <canvas id="overlay-canvas"></canvas>
+        </div>
         <p class="webcam-label">Coastal Burwood, Christchurch — via Windy</p>
+      </div>
+
+      <div class="webcam-controls">
+        <button id="refresh-btn">Refresh</button>
+        <button id="overlay-toggle">Show classification overlay</button>
+        <button id="reclassify-btn">Re-classify</button>
       </div>
 
       <div id="cloud-result" class="cloud-result">
         <p class="cloud-pending" id="cloud-status">Loading cloud classifier...</p>
+        <div class="progress-bar" id="progress-bar" style="display:none">
+          <div class="progress-bar-fill" id="progress-bar-fill"></div>
+        </div>
       </div>
-
-      <button id="refresh-btn" style="margin-top:0.75rem;padding:0.4rem 1rem;background:#333;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.85rem;">
-        Refresh Webcam
-      </button>
     </div>
   </div>
 </div>
@@ -277,61 +377,281 @@
     St: 'Stratus — low, flat uniform grey layer',
   };
 
+  // Class color palette for the heatmap overlay
+  const CLASS_COLORS = {
+    Ac:         [220, 220, 240],  // pale blue-white
+    As:         [180, 180, 190],  // pale grey
+    Asperitas:  [80,  140, 160],  // teal
+    Cb:         [60,  50,  80],   // dark purple-grey
+    Cc:         [250, 245, 200],  // pale yellow
+    Ci:         [180, 220, 255],  // light blue
+    Clear:      [120, 180, 255],  // sky blue
+    Cs:         [230, 230, 250],  // very pale lavender
+    Ct:         [255, 100, 80],   // red-orange (contrail)
+    Cu:         [255, 255, 255],  // bright white
+    Fog:        [180, 160, 140],  // beige-brown
+    Lenticular: [180, 230, 100],  // lime
+    Mammatus:   [150, 100, 180],  // purple
+    Ns:         [80,  70,  90],   // dark grey-purple
+    Rainbow:    [255, 100, 200],  // pink-magenta
+    Sc:         [160, 170, 190],  // grey-blue
+    St:         [140, 150, 170],  // medium grey
+  };
+
   let cloudModel = null;
   let classNames = null;
+  let skyMask = null;          // ImageData of the sky mask at full res
+  let skyMaskMeta = null;
+  let lastPredictions = null;  // last sliding-window result
+
+  // Sliding window config
+  const PROCESS_WIDTH = 960;   // downsample for speed
+  const WINDOW_SIZE = 192;     // window size in processed coords
+  const STEP = 96;             // step in processed coords
+  const SKY_THRESHOLD = 0.6;   // min fraction of window that must be sky
+  const MODEL_INPUT_SIZE = 224;
 
   async function loadCloudModel() {
     const status = document.getElementById('cloud-status');
     try {
-      const res = await fetch('models/tfjs/class_names.json');
-      classNames = await res.json();
+      // Load class names + model + sky mask in parallel
+      const [namesRes, maskMeta] = await Promise.all([
+        fetch('models/tfjs/class_names.json'),
+        fetch('models/sky_mask.json').then(r => r.ok ? r.json() : null),
+      ]);
+      classNames = await namesRes.json();
+      skyMaskMeta = maskMeta;
+
+      status.textContent = 'Loading classifier model...';
       cloudModel = await tf.loadLayersModel('models/tfjs/model.json');
-      status.textContent = 'Classifier ready — analysing...';
+
+      status.textContent = 'Loading sky mask...';
+      await loadSkyMask();
+
+      status.textContent = 'Ready — analysing webcam...';
       classifyWebcam();
     } catch (e) {
-      status.textContent = 'Could not load cloud classifier.';
+      status.textContent = 'Could not load classifier: ' + e.message;
       console.error('Model load error:', e);
     }
   }
 
+  async function loadSkyMask() {
+    return new Promise((resolve, reject) => {
+      const maskImg = new Image();
+      maskImg.crossOrigin = 'anonymous';
+      maskImg.onload = () => {
+        // Draw mask to a hidden canvas at PROCESS_WIDTH
+        const aspect = maskImg.naturalHeight / maskImg.naturalWidth;
+        const w = PROCESS_WIDTH;
+        const h = Math.round(w * aspect);
+        const c = document.createElement('canvas');
+        c.width = w;
+        c.height = h;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(maskImg, 0, 0, w, h);
+        skyMask = ctx.getImageData(0, 0, w, h);
+        resolve();
+      };
+      maskImg.onerror = reject;
+      maskImg.src = 'models/sky_mask.png';
+    });
+  }
+
   async function classifyWebcam() {
-    if (!cloudModel || !classNames) return;
+    if (!cloudModel || !classNames || !skyMask) return;
     const resultDiv = document.getElementById('cloud-result');
+    const statusEl = document.getElementById('cloud-status');
+    const progressBar = document.getElementById('progress-bar');
+    const progressFill = document.getElementById('progress-bar-fill');
 
     try {
       const img = document.getElementById('webcam-img');
-      // Wait for image to be loaded
       if (!img.complete) {
         await new Promise(r => { img.onload = r; img.onerror = r; });
       }
 
-      const tensor = tf.tidy(() => {
-        let t = tf.browser.fromPixels(img);
-        t = tf.image.resizeBilinear(t, [224, 224]);
-        // ResNet50V2 preprocess_input: scale to [-1, 1]
-        t = t.toFloat().div(127.5).sub(1.0);
-        return t.expandDims(0);
-      });
+      // Draw image to processing canvas at PROCESS_WIDTH
+      const aspect = img.naturalHeight / img.naturalWidth;
+      const procW = PROCESS_WIDTH;
+      const procH = Math.round(procW * aspect);
 
-      const preds = cloudModel.predict(tensor);
-      const probs = await preds.data();
-      tensor.dispose();
-      preds.dispose();
+      const canvas = document.createElement('canvas');
+      canvas.width = procW;
+      canvas.height = procH;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, procW, procH);
 
-      const maxIdx = probs.indexOf(Math.max(...probs));
-      const label = classNames[maxIdx];
-      const confidence = (probs[maxIdx] * 100).toFixed(1);
-      const desc = CLASS_DESCRIPTIONS[label] || label;
+      // Generate candidate window positions
+      const windows = [];
+      const samplesPerWindow = 16; // 4x4 grid for sky check
+      const sampleStep = WINDOW_SIZE / 4;
 
-      resultDiv.innerHTML = `
-        <p class="cloud-type">${label}</p>
-        <p class="cloud-confidence">${confidence}% confidence</p>
-        <p class="cloud-desc">${desc}</p>`;
+      for (let y = 0; y + WINDOW_SIZE <= procH; y += STEP) {
+        for (let x = 0; x + WINDOW_SIZE <= procW; x += STEP) {
+          // Count sky pixels in window
+          let skyCount = 0;
+          for (let dy = 0; dy < WINDOW_SIZE; dy += sampleStep) {
+            for (let dx = 0; dx < WINDOW_SIZE; dx += sampleStep) {
+              const idx = ((y + dy) * procW + (x + dx)) * 4;
+              if (skyMask.data[idx] > 128) skyCount++;
+            }
+          }
+          const skyFrac = skyCount / samplesPerWindow;
+          if (skyFrac >= SKY_THRESHOLD) {
+            windows.push({ x, y, skyFrac });
+          }
+        }
+      }
+
+      console.log(`Sliding window: ${windows.length} sky-containing windows`);
+
+      if (windows.length === 0) {
+        resultDiv.innerHTML = '<p class="cloud-pending">No sky region detected — image may be obscured.</p>';
+        return;
+      }
+
+      // Classify each window
+      statusEl.textContent = `Classifying ${windows.length} regions...`;
+      progressBar.style.display = 'block';
+
+      const numClasses = classNames.length;
+      const classTotals = new Array(numClasses).fill(0);
+      const windowPredictions = [];
+
+      for (let i = 0; i < windows.length; i++) {
+        const win = windows[i];
+        const cropCanvas = document.createElement('canvas');
+        cropCanvas.width = MODEL_INPUT_SIZE;
+        cropCanvas.height = MODEL_INPUT_SIZE;
+        cropCanvas.getContext('2d').drawImage(
+          canvas, win.x, win.y, WINDOW_SIZE, WINDOW_SIZE,
+          0, 0, MODEL_INPUT_SIZE, MODEL_INPUT_SIZE
+        );
+
+        const probs = tf.tidy(() => {
+          let t = tf.browser.fromPixels(cropCanvas);
+          // ResNet50V2 preprocess_input: scale to [-1, 1]
+          t = t.toFloat().div(127.5).sub(1.0);
+          t = t.expandDims(0);
+          return cloudModel.predict(t);
+        });
+        const probsArr = await probs.data();
+        probs.dispose();
+
+        const maxIdx = probsArr.indexOf(Math.max(...probsArr));
+        windowPredictions.push({
+          x: win.x,
+          y: win.y,
+          classIdx: maxIdx,
+          className: classNames[maxIdx],
+          confidence: probsArr[maxIdx],
+          probs: Array.from(probsArr),
+        });
+
+        // Weighted accumulation (by confidence)
+        for (let c = 0; c < numClasses; c++) {
+          classTotals[c] += probsArr[c];
+        }
+
+        progressFill.style.width = ((i + 1) / windows.length * 100) + '%';
+      }
+
+      progressBar.style.display = 'none';
+      statusEl.textContent = '';
+
+      // Normalise
+      const total = classTotals.reduce((a, b) => a + b, 0);
+      const classFractions = classTotals.map(c => c / total);
+      lastPredictions = {
+        windows: windowPredictions,
+        classFractions,
+        procW,
+        procH,
+        timestamp: new Date().toISOString(),
+      };
+
+      renderResults(classFractions);
+      renderOverlay(windowPredictions, procW, procH);
+
     } catch (e) {
-      resultDiv.innerHTML = `<p class="cloud-pending">Classification failed — image may be unavailable.</p>`;
+      resultDiv.innerHTML = `<p class="cloud-pending">Classification failed: ${e.message}</p>`;
       console.error('Classification error:', e);
     }
   }
+
+  function renderResults(classFractions) {
+    const resultDiv = document.getElementById('cloud-result');
+    // Sort classes by fraction
+    const ranked = classFractions
+      .map((frac, idx) => ({ name: classNames[idx], frac }))
+      .sort((a, b) => b.frac - a.frac)
+      .filter(c => c.frac >= 0.02); // hide noise
+
+    const top = ranked[0];
+    const summary = ranked.slice(0, 3).map(c => `${c.name} (${Math.round(c.frac * 100)}%)`).join(' · ');
+
+    const items = ranked.slice(0, 8).map(c => {
+      const color = CLASS_COLORS[c.name] || [200, 200, 200];
+      const swatch = `rgb(${color[0]},${color[1]},${color[2]})`;
+      return `<div class="cloud-item">
+        <div class="cloud-swatch" style="background:${swatch}"></div>
+        <span class="cloud-item-label">${c.name}</span>
+        <span class="cloud-item-pct">${Math.round(c.frac * 100)}%</span>
+      </div>`;
+    }).join('');
+
+    resultDiv.innerHTML = `
+      <p class="cloud-summary"><strong>Detected:</strong> ${summary}</p>
+      <div class="cloud-breakdown">${items}</div>
+      <div class="progress-bar" id="progress-bar" style="display:none"><div class="progress-bar-fill" id="progress-bar-fill"></div></div>`;
+  }
+
+  function renderOverlay(windows, procW, procH) {
+    const overlay = document.getElementById('overlay-canvas');
+    const img = document.getElementById('webcam-img');
+
+    // Match canvas resolution to image natural size
+    overlay.width = img.naturalWidth;
+    overlay.height = img.naturalHeight;
+
+    const ctx = overlay.getContext('2d');
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+    // Scale from processing coords to natural coords
+    const scaleX = img.naturalWidth / procW;
+    const scaleY = img.naturalHeight / procH;
+    const winW = WINDOW_SIZE * scaleX;
+    const winH = WINDOW_SIZE * scaleY;
+
+    for (const win of windows) {
+      const color = CLASS_COLORS[win.className] || [200, 200, 200];
+      // Use radial gradient for soft window blending
+      const cx = win.x * scaleX + winW / 2;
+      const cy = win.y * scaleY + winH / 2;
+      const r = Math.max(winW, winH) / 2;
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      const alpha = Math.min(0.7, win.confidence * 1.5);
+      grad.addColorStop(0, `rgba(${color[0]},${color[1]},${color[2]},${alpha})`);
+      grad.addColorStop(1, `rgba(${color[0]},${color[1]},${color[2]},0)`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(win.x * scaleX, win.y * scaleY, winW, winH);
+    }
+  }
+
+  // Overlay toggle
+  document.getElementById('overlay-toggle').addEventListener('click', (e) => {
+    const overlay = document.getElementById('overlay-canvas');
+    overlay.classList.toggle('visible');
+    e.target.classList.toggle('active');
+    e.target.textContent = overlay.classList.contains('visible')
+      ? 'Hide classification overlay'
+      : 'Show classification overlay';
+  });
+
+  document.getElementById('reclassify-btn').addEventListener('click', () => {
+    classifyWebcam();
+  });
 
   loadCloudModel();
 

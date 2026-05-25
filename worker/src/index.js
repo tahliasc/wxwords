@@ -76,13 +76,132 @@ export default {
       if (url.pathname === "/stats" && request.method === "GET") {
         return handleStats(request, env);
       }
+      if (url.pathname === "/captures" && request.method === "GET") {
+        return handleCaptures(request, env, url);
+      }
+      if (url.pathname.startsWith("/capture/") && request.method === "GET") {
+        return handleCaptureImage(request, env, url);
+      }
+      if (url.pathname.startsWith("/labels/") && request.method === "POST") {
+        return handleLabels(request, env, url);
+      }
 
       return jsonResponse({ error: "Not found" }, 404, env, request);
     } catch (e) {
       return jsonResponse({ error: e.message }, 500, env, request);
     }
   },
+
+  async scheduled(controller, env, ctx) {
+    ctx.waitUntil(captureWebcam(env, controller));
+  },
 };
+
+async function captureWebcam(env, controller) {
+  const url = env.WEBCAM_URL;
+  if (!url) {
+    console.error("WEBCAM_URL not set");
+    return;
+  }
+
+  const res = await fetch(url, { cf: { cacheTtl: 0 } });
+  if (!res.ok) {
+    console.error(`Fetch failed: ${res.status}`);
+    return;
+  }
+
+  // ISO timestamp with colons/dots replaced for R2-safe keys
+  const ts = new Date(controller.scheduledTime).toISOString().replace(/[:.]/g, "-");
+  const key = `webcam/${ts}.jpg`;
+
+  await env.BUCKET.put(key, res.body, {
+    httpMetadata: { contentType: "image/jpeg" },
+    customMetadata: { capturedAt: new Date(controller.scheduledTime).toISOString() },
+  });
+
+  console.log(`Stored ${key}`);
+}
+
+async function handleCaptures(request, env, url) {
+  // List captures from R2 with optional date filter
+  // Query params: ?days=7 (default), ?cursor=...
+  const days = Math.min(parseInt(url.searchParams.get("days") || "7"), 30);
+  const cursor = url.searchParams.get("cursor") || undefined;
+
+  const cutoff = new Date(Date.now() - days * 86400_000);
+
+  const list = await env.BUCKET.list({
+    prefix: "webcam/",
+    limit: 1000,
+    cursor,
+  });
+
+  const captures = [];
+  for (const obj of list.objects) {
+    // Parse timestamp from key: webcam/2026-05-08T14-30-00-000Z.jpg
+    const match = obj.key.match(/webcam\/(.+)\.jpg$/);
+    if (!match) continue;
+    const tsStr = match[1].replace(/-(\d{2})-(\d{2})-(\d{3})Z$/, ":$1:$2.$3Z");
+    const ts = new Date(tsStr);
+    if (isNaN(ts.getTime()) || ts < cutoff) continue;
+
+    // Check for accompanying labels JSON
+    const labelKey = `labels/${match[1]}.json`;
+    let hasLabels = false;
+    try {
+      const head = await env.BUCKET.head(labelKey);
+      hasLabels = !!head;
+    } catch {}
+
+    captures.push({
+      key: obj.key,
+      ts: ts.toISOString(),
+      size: obj.size,
+      hasLabels,
+    });
+  }
+
+  captures.sort((a, b) => b.ts.localeCompare(a.ts));
+  return jsonResponse({ count: captures.length, captures, cursor: list.truncated ? list.cursor : null }, 200, env, request);
+}
+
+async function handleCaptureImage(request, env, url) {
+  const key = decodeURIComponent(url.pathname.replace("/capture/", ""));
+  const obj = await env.BUCKET.get(key);
+  if (!obj) return new Response("Not found", { status: 404 });
+
+  return new Response(obj.body, {
+    headers: {
+      "Content-Type": "image/jpeg",
+      "Cache-Control": "public, max-age=3600",
+      ...corsHeaders(env, request),
+    },
+  });
+}
+
+async function handleLabels(request, env, url) {
+  // POST /labels/<webcam-id> with JSON body of corrections
+  // Admin only — these become training data
+  if (!isAdmin(request, env)) {
+    return jsonResponse({ error: "Unauthorized" }, 401, env, request);
+  }
+
+  const id = url.pathname.replace("/labels/", "");
+  const body = await request.json();
+  const labelKey = `labels/${id}.json`;
+
+  const labelData = {
+    webcam_key: `webcam/${id}.jpg`,
+    labeled_at: new Date().toISOString(),
+    ...body,
+  };
+
+  await env.BUCKET.put(labelKey, JSON.stringify(labelData, null, 2), {
+    httpMetadata: { contentType: "application/json" },
+  });
+
+  return jsonResponse({ success: true, key: labelKey }, 200, env, request);
+}
 
 async function handleUpload(request, env) {
   const formData = await request.formData();

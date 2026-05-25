@@ -8,8 +8,12 @@
       "bucket_name": "wxwords-uploads"
     }
   ],
+  "triggers": {
+    "crons": ["*/30 * * * *"]
+  },
   "vars": {
     "ADMIN_TOKEN": "bATCkwTJMBoP5HDofrMpJis3XJLwYk4XnEO_mci2nGo",
-    "ALLOWED_ORIGIN": "https://tahliasc.github.io"
+    "ALLOWED_ORIGIN": "https://tahliasc.github.io",
+    "WEBCAM_URL": "https://imgproxy.windy.com/_/full/plain/current/1672279274/original.jpg"
   }
 }
