@@ -423,7 +423,7 @@
       skyMaskMeta = maskMeta;
 
       status.textContent = 'Loading classifier model...';
-      cloudModel = await tf.loadLayersModel('models/tfjs/model.json');
+      cloudModel = await tf.loadGraphModel('models/tfjs/model.json');
 
       status.textContent = 'Loading sky mask...';
       await loadSkyMask();

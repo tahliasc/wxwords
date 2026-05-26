@@ -364,7 +364,7 @@ async function init() {
   // Load model (separate from mask so failures are isolated)
   showStatus('Loading classifier model (~25 MB)...');
   try {
-    cloudModel = await tf.loadLayersModel('models/tfjs/model.json');
+    cloudModel = await tf.loadGraphModel('models/tfjs/model.json');
     console.log('Model loaded. Input shape:', cloudModel.inputs[0].shape);
   } catch (e) {
     console.error('Model load failed:', e);
