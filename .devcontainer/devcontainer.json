@@ -1,0 +1,28 @@
+{
+  "name": "WxWords Dev",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "dev",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "files.eol": "\n"
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+  "forwardPorts": [8080, 8787],
+  "portsAttributes": {
+    "8080": {"label": "Static site", "onAutoForward": "openBrowser"},
+    "8787": {"label": "Wrangler dev"}
+  },
+  "remoteUser": "dev"
+}

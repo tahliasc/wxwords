@@ -1,0 +1,58 @@
+# WxWords development container
+# Single image with Python + Node + Wrangler + GitHub CLI for
+# cross-platform (Linux / Windows WSL2) dev.
+
+FROM python:3.11-slim
+
+ARG USER_UID=1000
+ARG USER_GID=1000
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    NODE_VERSION=20
+
+# System deps + Node 20 + GitHub CLI
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential git curl wget ca-certificates gnupg unzip \
+        # libs needed by Pillow, OpenCV, TF
+        libgl1 libglib2.0-0 \
+        # libs needed by Playwright Chromium
+        libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
+        libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
+        libgbm1 libpango-1.0-0 libcairo2 libasound2 \
+        openssh-client jq \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+        | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+        > /etc/apt/sources.list.d/github-cli.list \
+    && apt-get update && apt-get install -y gh \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user matching host UID for clean file permissions on Linux
+RUN groupadd -g ${USER_GID} dev 2>/dev/null || true \
+    && useradd -m -u ${USER_UID} -g ${USER_GID} -s /bin/bash dev 2>/dev/null \
+    || usermod -aG sudo dev
+
+# Wrangler global install
+RUN npm install -g wrangler
+
+WORKDIR /workspace
+
+# Python deps
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --upgrade pip && pip install -r /tmp/requirements.txt
+
+USER dev
+
+# Install Playwright browsers as the dev user (optional — large download)
+RUN python -m playwright install chromium 2>/dev/null || true
+
+# Ports: 8080 for static site, 8787 for wrangler dev
+EXPOSE 8080 8787
+
+CMD ["bash"]

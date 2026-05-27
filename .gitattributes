@@ -1,0 +1,18 @@
+# Force LF endings for everything — keeps Linux/Windows in sync
+* text=auto eol=lf
+
+# Binary files: don't normalise
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.keras binary
+*.h5 binary
+*.bin binary
+*.zip binary
+*.pdf binary
+*.xlsx binary
+*.ods binary
+
+# Explicit LF for shell scripts (Windows could otherwise CRLF them)
+*.sh text eol=lf
+*.bash text eol=lf

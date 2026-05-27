@@ -1,0 +1,39 @@
+services:
+  dev:
+    build:
+      context: .
+      args:
+        # Pass host UID/GID on Linux so created files have correct ownership.
+        # On Windows/WSL2 these defaults are fine.
+        USER_UID: "${UID:-1000}"
+        USER_GID: "${GID:-1000}"
+    image: wxwords-dev
+    container_name: wxwords-dev
+    env_file:
+      - .env
+    volumes:
+      # Project source mounted at /workspace (your edits propagate live)
+      - .:/workspace:cached
+      # Persist auth across container rebuilds
+      - gh-config:/home/dev/.config/gh
+      - wrangler-config:/home/dev/.config/.wrangler
+      - npm-cache:/home/dev/.npm
+      - pip-cache:/home/dev/.cache/pip
+      # Datasets in a named volume on Windows for speed; bind mount on Linux works fine
+      # (uncomment the named volume version below if you want it faster on Windows)
+      # - wxwords-data:/workspace/data
+    ports:
+      - "8080:8080"   # Static site
+      - "8787:8787"   # Wrangler dev
+    stdin_open: true
+    tty: true
+    working_dir: /workspace
+    # Run as the dev user
+    user: "${UID:-1000}:${GID:-1000}"
+
+volumes:
+  gh-config:
+  wrangler-config:
+  npm-cache:
+  pip-cache:
+  # wxwords-data:

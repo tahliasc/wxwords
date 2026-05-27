@@ -29,6 +29,10 @@ Thumbs.db
 # Cloudflare
 .wrangler/
 
+# Docker / secrets
+.env
+docker-compose.override.yml
+
 # Temp
 *.tmp
 *.log

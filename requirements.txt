@@ -1,0 +1,18 @@
+# Core ML stack
+tensorflow==2.18.*
+torch>=2.0
+torchvision>=0.15
+transformers>=4.40
+
+# Image processing
+Pillow>=10.0
+numpy>=1.26,<2.0
+
+# Spreadsheet export (weather words tables)
+openpyxl>=3.1
+
+# Browser automation (for testing the live site)
+playwright>=1.45
+
+# Cloud / web utilities
+requests>=2.31
