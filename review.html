@@ -105,6 +105,72 @@
     }
     #overlay-canvas.visible { opacity: 0.55; }
 
+    /* Marker layer for click-to-label regions */
+    #marker-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    #marker-canvas.labeling {
+      pointer-events: auto;
+      cursor: crosshair;
+    }
+    .webcam-stack.labeling img { cursor: crosshair; }
+
+    /* Region-label class palette */
+    .palette {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+      gap: 0.3rem;
+      margin-top: 0.5rem;
+    }
+    .palette-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.3rem 0.4rem;
+      background: #2a2a4a;
+      border: 2px solid #444;
+      border-radius: 5px;
+      color: #ddd;
+      cursor: pointer;
+      font-size: 0.78rem;
+    }
+    .palette-btn:hover { background: #3a3a5a; }
+    .palette-btn.active {
+      border-color: #fff;
+      box-shadow: 0 0 0 1px #fff inset;
+    }
+    .palette-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      border: 1px solid rgba(255,255,255,0.3);
+      flex-shrink: 0;
+    }
+    .region-list {
+      margin-top: 0.5rem;
+      font-size: 0.78rem;
+      color: #aaa;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    .region-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.2rem 0;
+    }
+    .region-item .del {
+      margin-left: auto;
+      color: #e88;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
     .image-info {
       margin-top: 0.75rem;
       text-align: center;
@@ -332,6 +398,9 @@ let cloudModel = null;
 let skyMask = null;
 let currentPredictions = null;
 let currentCorrections = {}; // { className: true }
+let currentRegionLabels = []; // [{ x, y, class }]  x,y normalized 0-1
+let activePaintClass = null;
+let labelMode = false;
 let adminToken = null;
 
 // --- Admin auth ---
@@ -471,9 +540,10 @@ async function render() {
 
   const html = `
     <div class="image-panel">
-      <div class="webcam-stack">
+      <div class="webcam-stack" id="webcam-stack">
         <img id="webcam-img" crossorigin="anonymous" src="${imgUrl}" alt="">
         <canvas id="overlay-canvas"></canvas>
+        <canvas id="marker-canvas"></canvas>
       </div>
       <div class="image-info">
         <div class="timestamp">${new Date(cap.ts).toLocaleString()}</div>
@@ -504,6 +574,13 @@ async function render() {
         <div id="class-buttons"></div>
       </div>
       <div class="panel-section">
+        <h3>Tag clouds by location</h3>
+        <p class="progress-row">Pick a class, then click on that cloud in the image. Each click drops a labelled point.</p>
+        <button class="toggle-btn" id="label-toggle">Start tagging regions</button>
+        <div class="palette" id="region-palette" style="display:none"></div>
+        <div class="region-list" id="region-list"></div>
+      </div>
+      <div class="panel-section">
         <button class="save-btn" id="save-btn" ${adminToken ? '' : 'disabled'}>
           ${adminToken ? 'Save labels' : 'Admin login required'}
         </button>
@@ -511,6 +588,11 @@ async function render() {
     </div>`;
 
   document.getElementById('main-area').innerHTML = html;
+
+  // Reset region-label state for this image
+  currentRegionLabels = [];
+  labelMode = false;
+  activePaintClass = null;
 
   const img = document.getElementById('webcam-img');
   await new Promise(r => { img.onload = r; img.onerror = r; });
@@ -528,6 +610,9 @@ async function render() {
 
   document.getElementById('save-btn').addEventListener('click', saveLabels);
 
+  // Wire up region-labelling
+  setupRegionLabelling(img);
+
   // Load existing labels if present
   if (cap.hasLabels) {
     const id = cap.key.replace('webcam/', '').replace('.jpg', '');
@@ -538,9 +623,138 @@ async function render() {
         currentCorrections = {};
         (data.confirmed_classes || []).forEach(c => currentCorrections[c] = true);
         renderClassButtons();
+        currentRegionLabels = (data.region_labels || []).map(r => ({
+          x: r.x, y: r.y, class: r.class,
+        }));
+        drawMarkers();
+        renderRegionList();
       }
     } catch {}
   }
+}
+
+function setupRegionLabelling(img) {
+  const toggle = document.getElementById('label-toggle');
+  const palette = document.getElementById('region-palette');
+  const stack = document.getElementById('webcam-stack');
+  const marker = document.getElementById('marker-canvas');
+
+  // Build palette of class swatches
+  palette.innerHTML = CLASSES.map(cls => {
+    const c = CLASS_COLORS[cls] || [200, 200, 200];
+    return `<button class="palette-btn" data-class="${cls}">
+      <span class="palette-swatch" style="background:rgb(${c.join(',')})"></span>${cls}
+    </button>`;
+  }).join('');
+
+  palette.querySelectorAll('.palette-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activePaintClass = btn.dataset.class;
+      palette.querySelectorAll('.palette-btn').forEach(b => b.classList.toggle('active', b === btn));
+    });
+  });
+
+  toggle.addEventListener('click', () => {
+    labelMode = !labelMode;
+    toggle.classList.toggle('active', labelMode);
+    toggle.textContent = labelMode ? 'Stop tagging regions' : 'Start tagging regions';
+    palette.style.display = labelMode ? 'grid' : 'none';
+    marker.classList.toggle('labeling', labelMode);
+    stack.classList.toggle('labeling', labelMode);
+    if (labelMode && !activePaintClass) {
+      // Auto-select the model's top class
+      const first = palette.querySelector('.palette-btn');
+      if (first) first.click();
+    }
+  });
+
+  // Click on the marker canvas to drop a labelled point
+  marker.addEventListener('click', (e) => {
+    if (!labelMode || !activePaintClass) return;
+    const rect = marker.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+
+    // If clicking near an existing point, remove it instead (toggle)
+    const hitIdx = currentRegionLabels.findIndex(p => {
+      const dx = (p.x - x) * rect.width;
+      const dy = (p.y - y) * rect.height;
+      return Math.sqrt(dx * dx + dy * dy) < 12;
+    });
+    if (hitIdx >= 0) {
+      currentRegionLabels.splice(hitIdx, 1);
+    } else {
+      currentRegionLabels.push({ x, y, class: activePaintClass });
+    }
+    drawMarkers();
+    renderRegionList();
+  });
+
+  // Initial size sync
+  resizeMarkerCanvas();
+  window.addEventListener('resize', () => { resizeMarkerCanvas(); drawMarkers(); });
+}
+
+function resizeMarkerCanvas() {
+  const marker = document.getElementById('marker-canvas');
+  const img = document.getElementById('webcam-img');
+  if (!marker || !img) return;
+  marker.width = img.clientWidth;
+  marker.height = img.clientHeight;
+}
+
+function drawMarkers() {
+  const marker = document.getElementById('marker-canvas');
+  if (!marker) return;
+  resizeMarkerCanvas();
+  const ctx = marker.getContext('2d');
+  ctx.clearRect(0, 0, marker.width, marker.height);
+
+  for (const p of currentRegionLabels) {
+    const c = CLASS_COLORS[p.class] || [200, 200, 200];
+    const px = p.x * marker.width;
+    const py = p.y * marker.height;
+    // Dot
+    ctx.beginPath();
+    ctx.arc(px, py, 7, 0, Math.PI * 2);
+    ctx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    ctx.stroke();
+    // Label text
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+    ctx.lineWidth = 3;
+    ctx.strokeText(p.class, px + 10, py + 4);
+    ctx.fillText(p.class, px + 10, py + 4);
+  }
+}
+
+function renderRegionList() {
+  const list = document.getElementById('region-list');
+  if (!list) return;
+  if (currentRegionLabels.length === 0) {
+    list.innerHTML = '<span style="color:#666">No region tags yet.</span>';
+    return;
+  }
+  list.innerHTML = currentRegionLabels.map((p, i) => {
+    const c = CLASS_COLORS[p.class] || [200, 200, 200];
+    return `<div class="region-item">
+      <span class="palette-swatch" style="background:rgb(${c.join(',')})"></span>
+      ${p.class} <span style="color:#666">(${Math.round(p.x*100)}, ${Math.round(p.y*100)})</span>
+      <span class="del" data-idx="${i}" title="Remove">&times;</span>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.del').forEach(el => {
+    el.addEventListener('click', () => {
+      currentRegionLabels.splice(parseInt(el.dataset.idx), 1);
+      drawMarkers();
+      renderRegionList();
+    });
+  });
 }
 
 async function classifyImage(img) {
@@ -709,6 +923,11 @@ async function saveLabels() {
 
   const body = {
     confirmed_classes: Object.keys(currentCorrections),
+    region_labels: currentRegionLabels.map(p => ({
+      x: Math.round(p.x * 10000) / 10000,
+      y: Math.round(p.y * 10000) / 10000,
+      class: p.class,
+    })),
     model_predictions: currentPredictions ? {
       class_fractions: currentPredictions.classFractions.map((f, i) => ({
         class: CLASSES[i],
