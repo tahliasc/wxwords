@@ -14,6 +14,7 @@
   "vars": {
     "ADMIN_TOKEN": "bATCkwTJMBoP5HDofrMpJis3XJLwYk4XnEO_mci2nGo",
     "ALLOWED_ORIGIN": "https://tahliasc.github.io",
-    "WEBCAM_URL": "https://imgproxy.windy.com/_/full/plain/current/1672279274/original.jpg"
+    "WEBCAM_URL": "https://imgproxy.windy.com/_/full/plain/current/1623991479/original.jpg",
+    "WEBCAM_STANDBY_URL": "https://imgproxy.windy.com/_/full/plain/current/1672279274/original.jpg"
   }
 }

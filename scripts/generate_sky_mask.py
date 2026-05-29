@@ -73,11 +73,11 @@ def main() -> None:
         "height": int(ys.max() - ys.min() + 1),
     }
 
-    # Mask out watermark areas (top-left "WizzCam", top-right timestamp)
+    # Mask out watermark areas (top-left cam name, top-right timestamp)
     # These are roughly top 30px and known regions
     pre_count = sky_pixels
-    sky_mask[:50, :150] = 0   # WizzCam logo top-left
-    sky_mask[:30, -180:] = 0  # Timestamp top-right
+    sky_mask[:30, :230] = 0   # "Taylors Mistake Cam 01" logo top-left
+    sky_mask[:30, -260:] = 0  # Timestamp top-right
     post_count = int((sky_mask > 0).sum())
     print(f"  Removed {pre_count - post_count} pixels for watermark/timestamp")
 

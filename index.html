@@ -325,11 +325,11 @@
         <div class="webcam-stack">
           <img id="webcam-img"
                crossorigin="anonymous"
-               src="https://imgproxy.windy.com/_/full/plain/current/1672279274/original.jpg"
-               alt="Christchurch webcam — Coastal Burwood">
+               src="https://imgproxy.windy.com/_/full/plain/current/1623991479/original.jpg"
+               alt="Christchurch webcam — Taylors Mistake Beach">
           <canvas id="overlay-canvas"></canvas>
         </div>
-        <p class="webcam-label">Coastal Burwood, Christchurch — via Windy</p>
+        <p class="webcam-label">Taylors Mistake Beach, Christchurch — via Windy</p>
       </div>
 
       <div class="webcam-controls">
@@ -350,7 +350,7 @@
 
 <footer>
   <p>Forecast data: <a href="https://www.metservice.com" target="_blank">MetService NZ</a>
-     &middot; Webcam: <a href="https://www.windy.com/-Webcams/webcams/1672279274" target="_blank">Windy</a>
+     &middot; Webcam: <a href="https://www.windy.com/-Webcams/webcams/1623991479" target="_blank">Windy</a>
      &middot; Cloud classification: <a href="https://github.com/marcosPlaza/Ground-based-Cloud-Classification-with-Deep-Learning" target="_blank">CCSN</a></p>
 </footer>
 
@@ -708,7 +708,7 @@
   // --- Webcam refresh ---
   const webcamImg = document.getElementById('webcam-img');
   document.getElementById('refresh-btn').addEventListener('click', () => {
-    const baseUrl = 'https://imgproxy.windy.com/_/full/plain/current/1672279274/original.jpg';
+    const baseUrl = 'https://imgproxy.windy.com/_/full/plain/current/1623991479/original.jpg';
     webcamImg.src = baseUrl + '?t=' + Date.now();
     webcamImg.onload = () => classifyWebcam();
   });
