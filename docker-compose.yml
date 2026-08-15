@@ -1,39 +1,70 @@
+# WxWords dev environment.
+#
+#   docker compose up -d dev                    # CPU only  (default)
+#   docker compose --profile gpu up -d dev-gpu  # with the GPU
+#
+# Both services run the IDENTICAL image — GPU is a run-time choice, so you can
+# decide per task whether to train locally or push the job to Colab/EC2.
+
+x-dev-common: &dev-common
+  image: wxwords-dev
+  build:
+    context: .
+    args:
+      # Host UID/GID on Linux so created files have correct ownership.
+      # On Windows/WSL2 the defaults are fine.
+      USER_UID: "${UID:-1000}"
+      USER_GID: "${GID:-1000}"
+  env_file:
+    - .env
+  volumes:
+    # Project source at /workspace — your edits propagate live.
+    - .:/workspace:cached
+    # Datasets. On this machine ./data is a SYMLINK to ~/data/wxwords/data
+    # (Phase 3 code/data split). Docker resolves symlinks on BOTH sides, so
+    # this one line works whether ./data is a symlink or a real directory —
+    # which keeps it portable to Windows/WSL2 and the laptop.
+    - ./data:/workspace/data
+    # Persist auth + caches across container rebuilds
+    - gh-config:/home/dev/.config/gh
+    - wrangler-config:/home/dev/.config/.wrangler
+    - npm-cache:/home/dev/.npm
+    - pip-cache:/home/dev/.cache/pip
+  stdin_open: true
+  tty: true
+  working_dir: /workspace
+  user: "${UID:-1000}:${GID:-1000}"
+
 services:
+  # ---------------------------------------------------------------- CPU --
   dev:
-    build:
-      context: .
-      args:
-        # Pass host UID/GID on Linux so created files have correct ownership.
-        # On Windows/WSL2 these defaults are fine.
-        USER_UID: "${UID:-1000}"
-        USER_GID: "${GID:-1000}"
-    image: wxwords-dev
+    <<: *dev-common
     container_name: wxwords-dev
-    env_file:
-      - .env
-    volumes:
-      # Project source mounted at /workspace (your edits propagate live)
-      - .:/workspace:cached
-      # Persist auth across container rebuilds
-      - gh-config:/home/dev/.config/gh
-      - wrangler-config:/home/dev/.config/.wrangler
-      - npm-cache:/home/dev/.npm
-      - pip-cache:/home/dev/.cache/pip
-      # Datasets in a named volume on Windows for speed; bind mount on Linux works fine
-      # (uncomment the named volume version below if you want it faster on Windows)
-      # - wxwords-data:/workspace/data
     ports:
       - "8080:8080"   # Static site
       - "8787:8787"   # Wrangler dev
-    stdin_open: true
-    tty: true
-    working_dir: /workspace
-    # Run as the dev user
-    user: "${UID:-1000}:${GID:-1000}"
+
+  # ---------------------------------------------------------------- GPU --
+  # Same image, plus the NVIDIA device. Started only on demand:
+  #   docker compose --profile gpu up -d dev-gpu
+  # Different host ports so it can run alongside the CPU container.
+  dev-gpu:
+    <<: *dev-common
+    container_name: wxwords-dev-gpu
+    profiles: ["gpu"]
+    ports:
+      - "8090:8080"   # Static site
+      - "8797:8787"   # Wrangler dev
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
 volumes:
   gh-config:
   wrangler-config:
   npm-cache:
   pip-cache:
-  # wxwords-data:

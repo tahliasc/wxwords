@@ -12,7 +12,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    NODE_VERSION=20
+    NODE_VERSION=22
 
 # System deps + Node 20 + GitHub CLI
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
         libgbm1 libpango-1.0-0 libcairo2 libasound2 \
         openssh-client jq \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs \
     && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
         | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
@@ -44,8 +44,24 @@ RUN npm install -g wrangler
 WORKDIR /workspace
 
 # Python deps
+#
+# torch is installed FIRST and from PyTorch's cu124 index, deliberately.
+# TF 2.18 is a CUDA 12 release; if torch comes from PyPI it resolves to a
+# CUDA 13 build and the two install parallel, conflicting CUDA stacks —
+# torch then fails at import with:
+#   ImportError: libtorch_cuda.so: undefined symbol: ncclCommResume
+# Pinning the index here is the only reliable way to fix the CUDA generation,
+# since requirements.txt applies an index globally.
+RUN pip install --upgrade pip \
+    && pip install --index-url https://download.pytorch.org/whl/cu124 \
+        "torch>=2.4,<2.7" "torchvision>=0.19,<0.22"
+
 COPY requirements.txt /tmp/requirements.txt
-RUN pip install --upgrade pip && pip install -r /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt
+
+# Fail the build if the CUDA stacks conflict, rather than shipping a broken
+# image that only errors when someone imports torch at runtime.
+RUN python -c "import torch, tensorflow as tf; print('torch', torch.__version__, '| TF', tf.__version__)"
 
 USER dev
 

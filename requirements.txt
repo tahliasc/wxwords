@@ -1,11 +1,32 @@
-# Core ML stack
-tensorflow==2.18.*
-torch>=2.0
-torchvision>=0.15
-transformers>=4.40
+# Core ML stack — GPU-enabled.
+#
+# ⚠️ CUDA GENERATION MUST MATCH ACROSS FRAMEWORKS.
+# TF 2.18 is a CUDA 12 release and pulls the `*-cu12` wheels. torch must
+# therefore also be a CUDA 12 build, or the two install parallel CUDA stacks
+# and torch fails at import with:
+#   ImportError: libtorch_cuda.so: undefined symbol: ncclCommResume
+# (torch's NCCL is shadowed by TF's older one on the library path).
+#
+# torch/torchvision are NOT listed here — they are installed separately in the
+# Dockerfile from PyTorch's cu124 index, which is the only reliable way to pin
+# the CUDA generation. Do not add them back here.
+#
+# `tensorflow[and-cuda]` brings the CUDA 12 / cuDNN 9 runtime in as pip wheels,
+# so the image stays on plain python:3.11-slim — no nvidia/cuda base needed.
+#
+# GPU is a RUN-TIME choice, not a build one — same image either way:
+#   docker compose up -d dev                      # CPU only
+#   docker compose --profile gpu up -d dev-gpu    # GPU (GTX 1070, Pascal CC 6.1)
+tensorflow[and-cuda]==2.18.*
+
+# Upper bound deliberate: 5.x is a major rewrite and this code was written
+# against the 4.x API. Lift only after testing.
+transformers>=4.40,<5
 
 # Image processing
 Pillow>=10.0
+# TF 2.18 supports numpy 2, but the classifier code assumes 1.x semantics.
+# Keep the pin until it has been tested against numpy 2.
 numpy>=1.26,<2.0
 
 # Spreadsheet export (weather words tables)
