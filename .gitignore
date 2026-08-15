@@ -33,6 +33,15 @@ Thumbs.db
 .env
 docker-compose.override.yml
 
+# Wrangler local secrets (ADMIN_TOKEN etc. for `wrangler dev`)
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+
+# data/ is a SYMLINK to ~/data/wxwords/data — the `data/` rule above matches
+# directories only, so the symlink needs its own slashless entry.
+/data
+
 # Temp
 *.tmp
 *.log

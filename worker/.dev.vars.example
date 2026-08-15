@@ -1,0 +1,14 @@
+# Local-only secrets for `wrangler dev`. Copy to `.dev.vars` and fill in.
+#
+#   cp .dev.vars.example .dev.vars
+#
+# `.dev.vars` is gitignored and must NEVER be committed.
+#
+# In PRODUCTION these are Cloudflare Worker secrets, not vars — set with:
+#   npx wrangler secret put ADMIN_TOKEN
+# (the value is entered at a hidden prompt, so it never lands in shell history)
+#
+# Do NOT add ADMIN_TOKEN back to `vars` in wrangler.json: a var and a secret
+# sharing a name collide, and deploying would overwrite the secret.
+
+ADMIN_TOKEN=
