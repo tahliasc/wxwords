@@ -59,3 +59,16 @@ scripts/page_id_map.json
 scripts/migration_*.json
 scripts/dupe_cleanup_plan.json
 scripts/_notion_pages_collected.txt
+# Personal flight / loyalty / Notion sync scripts — local only, never GitHub
+scripts/flight_*.py
+scripts/flights_*.py
+scripts/parse_loyalty_csvs.py
+scripts/sync_from_notion.py
+scripts/build_notion_pages.py
+scripts/build_migration_actions.py
+scripts/filter_inventory.py
+scripts/airports.py
+
+# Claude Code machine-local settings (CLAUDE.md at repo root IS tracked)
+.claude/settings.local.json
+.claude/*.jsonl
