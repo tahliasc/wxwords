@@ -1,70 +1,29 @@
-# WxWords dev environment.
+# ⚠️ RETIRED — this project no longer has its own container.
 #
-#   docker compose up -d dev                    # CPU only  (default)
-#   docker compose --profile gpu up -d dev-gpu  # with the GPU
+# Superseded 2026-08-16 by the unified dev container, which is a strict
+# superset: identical Node/wrangler/gh/TF/torch/playwright toolchain, PLUS the
+# met11 science environment and every repo under ~/code mounted at once.
 #
-# Both services run the IDENTICAL image — GPU is a run-time choice, so you can
-# decide per task whether to train locally or push the job to Colab/EC2.
-
-x-dev-common: &dev-common
-  image: wxwords-dev
-  build:
-    context: .
-    args:
-      # Host UID/GID on Linux so created files have correct ownership.
-      # On Windows/WSL2 the defaults are fine.
-      USER_UID: "${UID:-1000}"
-      USER_GID: "${GID:-1000}"
-  env_file:
-    - .env
-  volumes:
-    # Project source at /workspace — your edits propagate live.
-    - .:/workspace:cached
-    # Datasets. On this machine ./data is a SYMLINK to ~/data/wxwords/data
-    # (Phase 3 code/data split). Docker resolves symlinks on BOTH sides, so
-    # this one line works whether ./data is a symlink or a real directory —
-    # which keeps it portable to Windows/WSL2 and the laptop.
-    - ./data:/workspace/data
-    # Persist auth + caches across container rebuilds
-    - gh-config:/home/dev/.config/gh
-    - wrangler-config:/home/dev/.config/.wrangler
-    - npm-cache:/home/dev/.npm
-    - pip-cache:/home/dev/.cache/pip
-  stdin_open: true
-  tty: true
-  working_dir: /workspace
-  user: "${UID:-1000}:${GID:-1000}"
+#   cd ~/code/infra/dev
+#   docker compose up -d dev                    # CPU   8080/8787/8888
+#   docker compose --profile gpu up -d dev-gpu  # GPU   8090/8797/8898
+#   docker compose exec dev bash                # shell — starts in met11
+#
+# Inside the container this project is at /workspace/wxwords, and `ml` switches
+# from met11 to the TF/torch environment.
+#
+# This file is kept only as a signpost. The Dockerfile alongside it is likewise
+# retired — the image is now built from ~/code/infra/dev/Dockerfile.
+#
+# NOTE for snowie: its compose builds from `../wxwords`. Repoint it at
+# ~/code/infra/dev when snowie is set up (Phase 11), or give it its own image.
 
 services:
-  # ---------------------------------------------------------------- CPU --
   dev:
-    <<: *dev-common
-    container_name: wxwords-dev
-    ports:
-      - "8080:8080"   # Static site
-      - "8787:8787"   # Wrangler dev
-
-  # ---------------------------------------------------------------- GPU --
-  # Same image, plus the NVIDIA device. Started only on demand:
-  #   docker compose --profile gpu up -d dev-gpu
-  # Different host ports so it can run alongside the CPU container.
-  dev-gpu:
-    <<: *dev-common
-    container_name: wxwords-dev-gpu
-    profiles: ["gpu"]
-    ports:
-      - "8090:8080"   # Static site
-      - "8797:8787"   # Wrangler dev
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-
-volumes:
-  gh-config:
-  wrangler-config:
-  npm-cache:
-  pip-cache:
+    image: alpine
+    command: >
+      sh -c 'echo "";
+             echo "  This compose file is retired.";
+             echo "  Use:  cd ~/code/infra/dev && docker compose up -d dev";
+             echo "";
+             exit 1'
