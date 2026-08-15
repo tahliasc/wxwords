@@ -45,3 +45,17 @@ docker-compose.override.yml
 # Temp
 *.tmp
 *.log
+
+# ─── PERSONAL DATA — NEVER COMMIT (this repo is PUBLIC on GitHub) ───
+# Gmail thread exports (full message bodies + personal address)
+scripts/threads/
+# Flight / loyalty / Notion personal exports
+scripts/flight_*.json
+scripts/flights_*.json
+scripts/loyalty_*.json
+scripts/notion_pages.json
+scripts/page_data_partial.json
+scripts/page_id_map.json
+scripts/migration_*.json
+scripts/dupe_cleanup_plan.json
+scripts/_notion_pages_collected.txt
