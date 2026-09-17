@@ -3,6 +3,10 @@
 For contributors working on the **website and content**. Model training is not
 covered here and needs none of its tooling — no Docker, no TensorFlow, no GPU.
 
+> **Content editing (a CMS) is under discussion.** The leading candidate is Astro +
+> React with a git-based CMS (Keystatic). If adopted, local development will need
+> Node.js 22 and this guide will change.
+
 ---
 
 ## How the site works
@@ -42,6 +46,10 @@ everything else stays private.
 
 **Adding a new page or asset? Add it to `PAGES` or `ASSETS` in
 `scripts/build_site.sh`**, or it will work locally and 404 on the live site.
+
+The build **refuses files that aren't committed** — Cloudflare builds from a clean
+checkout, so an uncommitted or gitignored file would pass locally and fail live.
+Commit before running `bash scripts/build_site.sh`.
 
 ### Every pull request gets a live preview
 
@@ -124,12 +132,25 @@ anyway — it's ~4 GB and stays with the maintainer.
 forwarded. In VS Code: *Reopen in Container*. On github.com: *Code → Codespaces →
 Create*. Nothing to install locally with Codespaces.
 
+The repo is private, so a codespace uses **your own** GitHub account's free monthly
+allowance. Stop it when you're done (github.com/codespaces).
+
+On the live site pages have no `.html` (`/upload`, `/review`) — Cloudflare redirects
+the `.html` form. Locally both work.
+
 ---
 
 ## 3. Cloudflare access
 
-Only needed to **deploy the Worker** or **inspect the R2 bucket**. Pure website edits
-don't need it.
+**The website deploys itself** — merging to `main` makes Workers Builds rebuild and
+publish it. Website and content work therefore needs **no Cloudflare access**.
+
+Access is only needed to **deploy the API Worker**, **inspect the R2 bucket**, or
+**roll back** a website deployment from the dashboard.
+
+> ⚠️ **Only ever run `wrangler deploy` inside `worker/`.** Run from the repo root it
+> reads the root `wrangler.jsonc` and deploys the **website** directly — bypassing
+> pull requests and review.
 
 **Maintainer:** Cloudflare dashboard → *Manage Account → Members → Invite*. Grant the
 narrowest role that covers the work:
@@ -149,6 +170,7 @@ Avoid *Administrator* — it covers billing, DNS and every other product on the 
 cd worker
 npx wrangler login          # browser sign-in with YOUR Cloudflare account
 npx wrangler dev            # local Worker at http://localhost:8787
+npm test                    # CORS allowlist tests — must pass before deploying
 npx wrangler deploy         # LIVE — only after agreeing the change
 npx wrangler tail           # live logs
 ```
@@ -238,6 +260,8 @@ or personal data. `.gitignore` covers the known ones — check anyway.
 ## Maintainer checklist
 
 - [ ] GitHub: add collaborator (Write) — the repo is private
+- [ ] Workers Builds: enable **builds for non-production branches** so PRs get
+      preview URLs (Worker `wxwords` → Settings → Build)
 - [ ] Branch protection is **not available** for private repos on GitHub Free, so
       "PRs only" is a working agreement, not an enforced rule. Cloudflare's
       one-click rollback is the safety net.
