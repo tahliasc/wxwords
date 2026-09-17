@@ -29,7 +29,6 @@ OUT=dist
 # ── Public pages ─────────────────────────────────────────────────────────
 PAGES=(
     index.html
-    words.html
     upload.html
     review.html          # admin moderation — protected by the Worker's token
 )
@@ -44,18 +43,31 @@ ASSETS=(
 # ── Deliberately NOT published ───────────────────────────────────────────
 #   sort_review.html, sort_review_webcam.html
 #       internal training-data tools; load multi-MB local prediction files
-#   data/weather_words.json   (needed by words.html)
-#       mātauranga Māori with iwi / hapū / kaikōrero attribution — publishing
-#       is a cultural decision, pending. Not tracked in git either.
+#   words.html + data/weather_words.json
+#       Weather words (kupu huarere) page. Withdrawn from the live site pending
+#       permission (commit 869ba6c) — mātauranga Māori with iwi / hapū /
+#       kaikōrero attribution. Both files are deliberately gitignored.
 #   everything else: training code, worker/, notes, config
 
 rm -rf "$OUT"
 mkdir -p "$OUT"
 
+# Cloudflare builds from a CLEAN checkout, so only committed files exist there.
+# Check the same thing locally — otherwise an untracked or gitignored file that
+# happens to sit in a working tree passes here and fails the live build.
+in_git=0
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 && in_git=1
+
 missing=0
 for f in "${PAGES[@]}" "${ASSETS[@]}"; do
     if [[ ! -e "$f" ]]; then
         echo "ERROR: $f is listed but does not exist" >&2
+        missing=1
+        continue
+    fi
+    if [[ $in_git -eq 1 ]] && [[ -z "$(git ls-files -- "$f")" ]]; then
+        echo "ERROR: $f is listed but not committed — it will not exist in the" >&2
+        echo "       Cloudflare build (check .gitignore / git add)" >&2
         missing=1
         continue
     fi

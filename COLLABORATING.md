@@ -19,13 +19,17 @@ covered here and needs none of its tooling — no Docker, no TensorFlow, no GPU.
 
 | Piece | What it is | How it goes live |
 |---|---|---|
-| **Site** | static HTML/JS in the repo root: `index.html`, `words.html`, `upload.html`, `review.html` | **merging to `main`** — Cloudflare Pages rebuilds within a minute or two |
+| **Site** | static HTML/JS in the repo root: `index.html`, `upload.html`, `review.html` | **merging to `main`** — Cloudflare Pages rebuilds within a minute or two |
 | **Model** | `models/tfjs/` — the in-browser cloud classifier | same as the site; it's just files |
 | **Worker** | `worker/` — the upload/moderation API | `npx wrangler deploy`, separately |
 | **Storage** | R2 bucket `wxwords-uploads` | managed through the Worker and the Cloudflare dashboard |
 
 > ⚠️ **`main` is production.** Anything merged to `main` is public within minutes.
 > Work on a branch and merge when it's ready.
+
+> **`words.html` (the kupu huarere / weather words page) is deliberately offline**,
+> withdrawn pending permission to publish the mātauranga Māori it contains. It and
+> its data are gitignored. Don't re-add it to the site without that permission.
 
 ### Only allowlisted files are published
 
