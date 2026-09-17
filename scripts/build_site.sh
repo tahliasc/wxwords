@@ -11,6 +11,13 @@
 # of it at <site>/CLAUDE.md, <site>/worker/src/index.js, and so on. Only the
 # files below are served. A new page or asset must be added here to go live.
 #
+# ⚠️ Keep dependency manifests OUT of the repo root. Cloudflare Pages
+# auto-installs anything it detects there (requirements.txt, package.json,
+# Pipfile, ...) before running this script. A root requirements.txt made it
+# try to pip-install TensorFlow 2.18 and fail the build. The training deps
+# therefore live in requirements-training.txt, which Pages ignores. This
+# script needs nothing beyond bash and cp.
+#
 # Local preview of exactly what will be published:
 #   bash scripts/build_site.sh && python3 -m http.server 8080 -d dist
 
