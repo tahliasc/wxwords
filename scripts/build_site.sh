@@ -2,16 +2,16 @@
 #
 # Assemble the PUBLIC website into dist/.
 #
-# Run by Cloudflare Pages on every push:
-#   Build command:           bash scripts/build_site.sh
-#   Build output directory:  dist
+# Run by Cloudflare Workers Builds on every push (Worker "wxwords"):
+#   Build command:   bash scripts/build_site.sh
+#   Deploy command:  npx wrangler deploy     (root wrangler.jsonc serves ./dist)
 #
 # Why an allowlist: the repo is private and also holds training code, the
 # Worker source, notes and config. Publishing the repo root would expose all
 # of it at <site>/CLAUDE.md, <site>/worker/src/index.js, and so on. Only the
 # files below are served. A new page or asset must be added here to go live.
 #
-# ⚠️ Keep dependency manifests OUT of the repo root. Cloudflare Pages
+# ⚠️ Keep dependency manifests OUT of the repo root. The Cloudflare build
 # auto-installs anything it detects there (requirements.txt, package.json,
 # Pipfile, ...) before running this script. A root requirements.txt made it
 # try to pip-install TensorFlow 2.18 and fail the build. The training deps

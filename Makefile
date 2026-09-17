@@ -8,7 +8,7 @@
 serve:
 	python3 -m http.server 8080
 
-# Build exactly what Cloudflare Pages publishes into dist/
+# Build exactly what Cloudflare publishes into dist/
 build:
 	bash scripts/build_site.sh
 

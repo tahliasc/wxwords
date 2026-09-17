@@ -13,7 +13,7 @@
 # WEBSITE WORK DOES NOT USE THIS FILE. It records the model-training stack.
 # Training runs in the maintainer's `dev` container (`ml` env); the
 # authoritative, locked copy is infra/dev/requirements.txt + requirements.lock
-# in the private infra repo. Named -training so Cloudflare Pages does not try
+# in the private infra repo. Named -training so the Cloudflare build does not try
 # to install it.
 tensorflow[and-cuda]==2.18.*
 

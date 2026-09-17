@@ -8,18 +8,20 @@ covered here and needs none of its tooling — no Docker, no TensorFlow, no GPU.
 ## How the site works
 
 ```
- private GitHub repo ──► Cloudflare Pages ──► https://wxwords.pages.dev
-   (main branch)          (runs scripts/build_site.sh)   │  calls
-        │                                                ▼
-        └─ worker/  ──(wrangler deploy)──►  Cloudflare Worker  ──►  R2 bucket
-                                            wxwords-upload-api      wxwords-uploads
-                                            (uploads, moderation,   (images, labels,
-                                             webcam captures)        webcam captures)
+ private GitHub repo (main)
+   │
+   ├─ site files ──► Workers Builds ──► Worker "wxwords"
+   │                 build_site.sh      https://wxwords.tahliasc.workers.dev
+   │                 wrangler deploy          │ the pages call ▼
+   │
+   └─ worker/ ────── wrangler deploy ──► Worker "wxwords-upload-api" ──► R2 bucket
+                     (run by hand)        uploads, moderation,            wxwords-uploads
+                                          webcam captures                 images, labels
 ```
 
 | Piece | What it is | How it goes live |
 |---|---|---|
-| **Site** | static HTML/JS in the repo root: `index.html`, `upload.html`, `review.html` | **merging to `main`** — Cloudflare Pages rebuilds within a minute or two |
+| **Site** | static HTML/JS in the repo root: `index.html`, `upload.html`, `review.html` | **merging to `main`** — Cloudflare rebuilds and redeploys within a minute or two |
 | **Model** | `models/tfjs/` — the in-browser cloud classifier | same as the site; it's just files |
 | **Worker** | `worker/` — the upload/moderation API | `npx wrangler deploy`, separately |
 | **Storage** | R2 bucket `wxwords-uploads` | managed through the Worker and the Cloudflare dashboard |
@@ -34,7 +36,8 @@ covered here and needs none of its tooling — no Docker, no TensorFlow, no GPU.
 ### Only allowlisted files are published
 
 The repo is **private** and also holds training code, the Worker source and notes.
-Cloudflare publishes only what `scripts/build_site.sh` copies into `dist/` —
+Cloudflare publishes only what `scripts/build_site.sh` copies into `dist/` (served by
+the `wxwords` Worker, configured in the root `wrangler.jsonc`) —
 everything else stays private.
 
 **Adding a new page or asset? Add it to `PAGES` or `ASSETS` in
@@ -42,8 +45,9 @@ everything else stays private.
 
 ### Every pull request gets a live preview
 
-Cloudflare builds each branch at its own URL and posts it on the pull request, e.g.
-`https://feature-glossary.wxwords.pages.dev`. Review the change there before
+Cloudflare builds each branch and deploys it to its own preview URL, linked from the
+pull request's Cloudflare check, e.g.
+`https://feature-glossary-wxwords.tahliasc.workers.dev`. Review the change there before
 merging — it talks to the real Worker, so moderation actions are still live.
 
 ---

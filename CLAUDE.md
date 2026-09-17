@@ -6,7 +6,8 @@ Exploring Te Reo Māori language, mātauranga Māori and weather.
 Its history was public, so still treat it as publishable: nothing secret may enter
 the tree. Website contributors: read `COLLABORATING.md` first.
 
-**`main` is production** — Cloudflare Pages builds it to https://wxwords.pages.dev.
+**`main` is production** — Cloudflare Workers Builds deploys it to https://wxwords.tahliasc.workers.dev
+(static-assets Worker `wxwords`, configured by the root `wrangler.jsonc`).
 Work on branches (each gets a preview URL); merging is going live.
 
 **Only files allowlisted in `scripts/build_site.sh` are published.** A new page or
@@ -51,8 +52,8 @@ worker-deploy / test` wrap the website commands.
 - Site: static HTML/JS in the repo root; model in `models/tfjs/`
 - Worker: `worker/` → `wxwords-upload-api`, R2 bucket `wxwords-uploads`
 - **Port 8080 is required** — Worker CORS allows the live site, its
-  `*.wxwords.pages.dev` previews, and `localhost:8080` / `127.0.0.1:8080`.
-  Configured by `ALLOWED_ORIGINS` / `PAGES_PREVIEW_HOST` in `worker/wrangler.json`;
+  `*-wxwords.tahliasc.workers.dev` previews, and `localhost:8080` / `127.0.0.1:8080`.
+  Configured by `ALLOWED_ORIGINS` / `PREVIEW_HOST_SUFFIXES` in `worker/wrangler.json`;
   logic in `worker/src/origins.js`, tested by `cd worker && npm test`.
 
 ```bash

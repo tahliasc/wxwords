@@ -1,0 +1,24 @@
+// The WxWords WEBSITE — a static-assets Worker, built by Cloudflare Workers Builds.
+//
+//   Build command:   bash scripts/build_site.sh     (fills ./dist from an allowlist)
+//   Deploy command:  npx wrangler deploy            (uses THIS file)
+//
+// Live:     https://wxwords.tahliasc.workers.dev
+// Previews: non-production branches get https://<branch>-wxwords.tahliasc.workers.dev
+//
+// This is NOT the upload/moderation API — that is worker/wrangler.json
+// (wxwords-upload-api). Wrangler uses the nearest config file, so commands run
+// inside worker/ still target the API.
+//
+// "name" must match the Worker created in the dashboard, or Workers Builds
+// refuses to deploy.
+{
+  "$schema": "./worker/node_modules/wrangler/config-schema.json",
+  "name": "wxwords",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./dist"
+  },
+  "workers_dev": true,
+  "preview_urls": true
+}
