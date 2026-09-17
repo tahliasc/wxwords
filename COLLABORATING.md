@@ -104,7 +104,10 @@ data.
 ### Not needed for website work
 
 The repo also contains training code (`train_*.py`, `presort_*.py`,
-`requirements-training.txt`, `data/`, the Docker files). Ignore it. `data/` isn't in git
+`requirements-training.txt`, `data/`). Ignore it — there is no container to set up.
+
+Shortcuts, if you have `make`: `make serve`, `make preview`, `make worker-dev`,
+`make test`. `data/` isn't in git
 anyway — it's ~4 GB and stays with the maintainer.
 
 ### Optional — VS Code / Codespaces

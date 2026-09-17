@@ -1,40 +1,37 @@
-# WxWords convenience targets
-# Run inside the dev container or on the host with docker compose installed.
+# WxWords convenience targets — no Docker needed.
+# Website work needs only python3 (and Node 22 for the Worker targets).
+# Model training runs in the maintainer's `dev` container, not from here.
 
-.PHONY: build up shell serve worker-deploy worker-tail captures clean
+.PHONY: serve build preview worker-dev worker-deploy worker-tail test captures
 
-# Build the image (run once or after Dockerfile changes)
-build:
-	docker compose build
-
-# Start the dev container in the background
-up:
-	docker compose up -d
-
-# Open a bash shell inside the running container
-shell:
-	docker compose exec dev bash
-
-# Start the static site server (run inside container or via `make`)
+# Serve the working tree at http://localhost:8080 (port 8080 is required — Worker CORS)
 serve:
-	docker compose exec dev python -m http.server 8080
+	python3 -m http.server 8080
 
-# Deploy the Cloudflare Worker
+# Build exactly what Cloudflare Pages publishes into dist/
+build:
+	bash scripts/build_site.sh
+
+# Build, then serve dist/ — catches pages missing from the allowlist
+preview: build
+	python3 -m http.server 8080 -d dist
+
+# Run the Worker locally at http://localhost:8787
+worker-dev:
+	cd worker && npx wrangler dev
+
+# Deploy the Worker — LIVE. Agree the change first.
 worker-deploy:
-	docker compose exec dev sh -c "cd worker && npx wrangler deploy"
+	cd worker && npm test && npx wrangler deploy
 
-# Tail Worker logs in real time
+# Tail live Worker logs
 worker-tail:
-	docker compose exec dev sh -c "cd worker && npx wrangler tail"
+	cd worker && npx wrangler tail
 
-# List current webcam captures via the Worker API
+# Worker unit tests (CORS allowlist)
+test:
+	cd worker && npm test
+
+# List recent webcam captures via the Worker API
 captures:
 	curl -s "https://wxwords-upload-api.tahliasc.workers.dev/captures?days=7" | python3 -m json.tool
-
-# Stop and remove the container (volumes preserved)
-down:
-	docker compose down
-
-# Stop and remove EVERYTHING including data/auth volumes
-clean:
-	docker compose down -v

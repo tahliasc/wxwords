@@ -7,16 +7,14 @@
 #   ImportError: libtorch_cuda.so: undefined symbol: ncclCommResume
 # (torch's NCCL is shadowed by TF's older one on the library path).
 #
-# torch/torchvision are NOT listed here — they are installed separately in the
-# Dockerfile from PyTorch's cu124 index, which is the only reliable way to pin
-# the CUDA generation. Do not add them back here.
+# torch/torchvision are NOT listed here — they are installed from PyTorch's
+# cu124 index, which is the only reliable way to pin the CUDA generation.
 #
-# `tensorflow[and-cuda]` brings the CUDA 12 / cuDNN 9 runtime in as pip wheels,
-# so the image stays on plain python:3.11-slim — no nvidia/cuda base needed.
-#
-# GPU is a RUN-TIME choice, not a build one — same image either way:
-#   docker compose up -d dev                      # CPU only
-#   docker compose --profile gpu up -d dev-gpu    # GPU (GTX 1070, Pascal CC 6.1)
+# WEBSITE WORK DOES NOT USE THIS FILE. It records the model-training stack.
+# Training runs in the maintainer's `dev` container (`ml` env); the
+# authoritative, locked copy is infra/dev/requirements.txt + requirements.lock
+# in the private infra repo. Named -training so Cloudflare Pages does not try
+# to install it.
 tensorflow[and-cuda]==2.18.*
 
 # Upper bound deliberate: 5.x is a major rewrite and this code was written

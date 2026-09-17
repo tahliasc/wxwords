@@ -45,7 +45,8 @@ systems design.
 | **Model training** (maintainer) | the maintainer's `dev` container, `ml` env | TF 2.18, torch 2.6+cu124, transformers |
 
 Do not suggest Docker, TensorFlow or the training scripts for website work.
-`Dockerfile.retired` and the stub `docker-compose.yml` are retired — ignore them.
+This repo has no container of its own. `make serve / preview / worker-dev /
+worker-deploy / test` wrap the website commands.
 
 - Site: static HTML/JS in the repo root; model in `models/tfjs/`
 - Worker: `worker/` → `wxwords-upload-api`, R2 bucket `wxwords-uploads`

@@ -29,9 +29,8 @@ Thumbs.db
 # Cloudflare
 .wrangler/
 
-# Docker / secrets
+# Secrets
 .env
-docker-compose.override.yml
 
 # Wrangler local secrets (ADMIN_TOKEN etc. for `wrangler dev`)
 .dev.vars
