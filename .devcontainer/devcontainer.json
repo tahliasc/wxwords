@@ -1,28 +1,27 @@
 {
-  "name": "WxWords Dev",
-  "dockerComposeFile": "../docker-compose.yml",
-  "service": "dev",
-  "workspaceFolder": "/workspace",
-  "shutdownAction": "stopCompose",
-  "customizations": {
-    "vscode": {
-      "settings": {
-        "python.defaultInterpreterPath": "/usr/local/bin/python",
-        "terminal.integrated.defaultProfile.linux": "bash",
-        "files.eol": "\n"
-      },
-      "extensions": [
-        "ms-python.python",
-        "ms-python.vscode-pylance",
-        "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode"
-      ]
-    }
+  // Lightweight environment for WEBSITE work only — Node 22 + Python 3.
+  // No TensorFlow/torch/GPU: model training is not done here.
+  // Works in VS Code ("Reopen in Container") and GitHub Codespaces.
+  "name": "WxWords (website)",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": { "version": "3.11" }
   },
+  // Port 8080 is REQUIRED: the Worker's CORS only allows localhost:8080.
   "forwardPorts": [8080, 8787],
   "portsAttributes": {
-    "8080": {"label": "Static site", "onAutoForward": "openBrowser"},
-    "8787": {"label": "Wrangler dev"}
+    "8080": { "label": "Site", "onAutoForward": "openBrowser" },
+    "8787": { "label": "Worker (wrangler dev)" }
   },
-  "remoteUser": "dev"
+  "postStartCommand": "echo 'Run: python3 -m http.server 8080   (see COLLABORATING.md)'",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "ritwickdey.LiveServer"
+      ],
+      "settings": { "files.eol": "\n" }
+    }
+  }
 }

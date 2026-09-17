@@ -2,8 +2,15 @@
 
 Exploring Te Reo Māori language, mātauranga Māori and weather.
 
-Root agreement: `~/code/CLAUDE.md`. Origin is Gitea; **GitHub pushes are manual**
-— note that `github` here is a **public** repo, so nothing secret may enter the tree.
+**This repo is public, and has more than one contributor.** Nothing secret may
+enter the tree. Website contributors: read `COLLABORATING.md` first.
+
+**`main` is production** — GitHub Pages serves it at
+https://tahliasc.github.io/wxwords/. Work on branches; merging is going live.
+
+Remotes differ by person. On the maintainer's machine `origin` is a private mirror
+and `github` is pushed manually — follow that machine's root `CLAUDE.md`. On a
+contributor's machine `origin` is GitHub.
 
 ## Expert lenses to apply
 
@@ -26,18 +33,28 @@ to inspire and educate.
 **Software developer** — 20+ years in C++, JavaScript and Python, specialised in
 systems design.
 
-## Stack
+## Stack — two kinds of work, two setups
 
-- Python 3.11, TensorFlow 2.18, PyTorch, transformers
-- Node 20, Wrangler, Playwright, GitHub CLI
-- Docker image `wxwords-dev` — also serves the snowie project
-- Ports **8080** (static site) / **8787** (wrangler dev)
+| Work | Setup | Needs |
+|---|---|---|
+| **Website / content** | none — see `COLLABORATING.md` | git, browser, Python 3; Node 22 only for the Worker |
+| **Model training** (maintainer) | the maintainer's `dev` container, `ml` env | TF 2.18, torch 2.6+cu124, transformers |
+
+Do not suggest Docker, TensorFlow or the training scripts for website work.
+`Dockerfile.retired` and the stub `docker-compose.yml` are retired — ignore them.
+
+- Site: static HTML/JS in the repo root; model in `models/tfjs/`
+- Worker: `worker/` → `wxwords-upload-api`, R2 bucket `wxwords-uploads`
+- **Port 8080 is required** — Worker CORS allows only the live site and
+  `localhost:8080` / `127.0.0.1:8080`. 8787 is `wrangler dev`.
 
 ```bash
-docker compose up -d && docker compose exec dev bash   # or: make up / make shell
-python -m http.server 8080                             # serve the site
-cd worker && npx wrangler deploy                       # deploy the Worker
+python3 -m http.server 8080                 # serve the site locally
+cd worker && npx wrangler dev               # local Worker
+cd worker && npx wrangler deploy            # LIVE — agree the change first
 ```
+
+Local pages talk to the **live** Worker and R2 — moderation actions change real data.
 
 ## 🔴 Secrets
 
