@@ -72,3 +72,6 @@ scripts/airports.py
 # Claude Code machine-local settings (CLAUDE.md at repo root IS tracked)
 .claude/settings.local.json
 .claude/*.jsonl
+
+# Built site (scripts/build_site.sh) — generated, never committed
+dist/

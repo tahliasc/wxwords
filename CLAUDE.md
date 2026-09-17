@@ -2,11 +2,15 @@
 
 Exploring Te Reo Māori language, mātauranga Māori and weather.
 
-**This repo is public, and has more than one contributor.** Nothing secret may
-enter the tree. Website contributors: read `COLLABORATING.md` first.
+**This repo is private (public until 2026-09) and has more than one contributor.**
+Its history was public, so still treat it as publishable: nothing secret may enter
+the tree. Website contributors: read `COLLABORATING.md` first.
 
-**`main` is production** — GitHub Pages serves it at
-https://tahliasc.github.io/wxwords/. Work on branches; merging is going live.
+**`main` is production** — Cloudflare Pages builds it to https://wxwords.pages.dev.
+Work on branches (each gets a preview URL); merging is going live.
+
+**Only files allowlisted in `scripts/build_site.sh` are published.** A new page or
+asset must be added there or it will 404 live.
 
 Remotes differ by person. On the maintainer's machine `origin` is a private mirror
 and `github` is pushed manually — follow that machine's root `CLAUDE.md`. On a
@@ -45,11 +49,14 @@ Do not suggest Docker, TensorFlow or the training scripts for website work.
 
 - Site: static HTML/JS in the repo root; model in `models/tfjs/`
 - Worker: `worker/` → `wxwords-upload-api`, R2 bucket `wxwords-uploads`
-- **Port 8080 is required** — Worker CORS allows only the live site and
-  `localhost:8080` / `127.0.0.1:8080`. 8787 is `wrangler dev`.
+- **Port 8080 is required** — Worker CORS allows the live site, its
+  `*.wxwords.pages.dev` previews, and `localhost:8080` / `127.0.0.1:8080`.
+  Configured by `ALLOWED_ORIGINS` / `PAGES_PREVIEW_HOST` in `worker/wrangler.json`;
+  logic in `worker/src/origins.js`, tested by `cd worker && npm test`.
 
 ```bash
 python3 -m http.server 8080                 # serve the site locally
+bash scripts/build_site.sh                  # build exactly what gets published
 cd worker && npx wrangler dev               # local Worker
 cd worker && npx wrangler deploy            # LIVE — agree the change first
 ```

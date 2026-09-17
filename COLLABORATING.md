@@ -8,9 +8,9 @@ covered here and needs none of its tooling — no Docker, no TensorFlow, no GPU.
 ## How the site works
 
 ```
- GitHub repo (main branch)  ──►  GitHub Pages  ──►  https://tahliasc.github.io/wxwords/
-        │                                               │  calls
-        │                                               ▼
+ private GitHub repo ──► Cloudflare Pages ──► https://wxwords.pages.dev
+   (main branch)          (runs scripts/build_site.sh)   │  calls
+        │                                                ▼
         └─ worker/  ──(wrangler deploy)──►  Cloudflare Worker  ──►  R2 bucket
                                             wxwords-upload-api      wxwords-uploads
                                             (uploads, moderation,   (images, labels,
@@ -19,7 +19,7 @@ covered here and needs none of its tooling — no Docker, no TensorFlow, no GPU.
 
 | Piece | What it is | How it goes live |
 |---|---|---|
-| **Site** | static HTML/JS in the repo root: `index.html`, `words.html`, `upload.html`, `review.html` | **pushing to `main`** — GitHub Pages republishes within a minute or two |
+| **Site** | static HTML/JS in the repo root: `index.html`, `words.html`, `upload.html`, `review.html` | **merging to `main`** — Cloudflare Pages rebuilds within a minute or two |
 | **Model** | `models/tfjs/` — the in-browser cloud classifier | same as the site; it's just files |
 | **Worker** | `worker/` — the upload/moderation API | `npx wrangler deploy`, separately |
 | **Storage** | R2 bucket `wxwords-uploads` | managed through the Worker and the Cloudflare dashboard |
@@ -27,12 +27,28 @@ covered here and needs none of its tooling — no Docker, no TensorFlow, no GPU.
 > ⚠️ **`main` is production.** Anything merged to `main` is public within minutes.
 > Work on a branch and merge when it's ready.
 
+### Only allowlisted files are published
+
+The repo is **private** and also holds training code, the Worker source and notes.
+Cloudflare publishes only what `scripts/build_site.sh` copies into `dist/` —
+everything else stays private.
+
+**Adding a new page or asset? Add it to `PAGES` or `ASSETS` in
+`scripts/build_site.sh`**, or it will work locally and 404 on the live site.
+
+### Every pull request gets a live preview
+
+Cloudflare builds each branch at its own URL and posts it on the pull request, e.g.
+`https://feature-glossary.wxwords.pages.dev`. Review the change there before
+merging — it talks to the real Worker, so moderation actions are still live.
+
 ---
 
 ## 1. GitHub access
 
 **Maintainer:** repo → Settings → Collaborators → *Add people* → their GitHub
-username. Write access is enough.
+username. Write access is enough. The repo is **private**, so this invite is the
+only way in.
 
 **Contributor:**
 
@@ -48,8 +64,9 @@ username. Write access is enough.
    git clone git@github.com:tahliasc/wxwords.git
    cd wxwords
    ```
-4. **Use your GitHub noreply address for commits.** This is a public repo, and GitHub
-   refuses pushes that would expose a private email (error `GH007`). Find yours at
+4. **Use your GitHub noreply address for commits.** The repo was public for years and
+   its history may be again; GitHub also refuses pushes that would expose a private
+   email (error `GH007`). Find yours at
    github.com/settings/emails — it looks like `12345+you@users.noreply.github.com`:
    ```bash
    git config user.email "12345+you@users.noreply.github.com"
@@ -68,8 +85,16 @@ python3 -m http.server 8080
 
 Open **http://localhost:8080**. Edit, refresh, repeat.
 
-**Use port 8080 exactly.** The Worker only accepts requests from the live site and
-from `localhost:8080` / `127.0.0.1:8080`. Any other port gets blocked by CORS, and
+To see **exactly what will be published** (catches pages missing from the
+allowlist):
+
+```bash
+bash scripts/build_site.sh
+python3 -m http.server 8080 -d dist
+```
+
+**Use port 8080 exactly.** The Worker only accepts requests from the live site, its preview
+URLs, and `localhost:8080` / `127.0.0.1:8080`. Any other port gets blocked by CORS, and
 uploads and the review page will fail in confusing ways.
 
 Your local copy talks to the **live** Worker and **live** R2 bucket. Browsing is
@@ -165,6 +190,9 @@ git push -u origin feature/short-description
 Then open a pull request on GitHub. The other person reviews; **merging is going
 live**.
 
+**Never push straight to `main`.** On this private repo GitHub can't technically block
+it, so the rule is ours to keep: every change goes through a pull request.
+
 - Keep PRs small — one page or one feature
 - Pull before starting: `git switch main && git pull`
 - Worker changes: say so in the PR, and agree who runs `wrangler deploy`
@@ -182,9 +210,11 @@ or personal data. `.gitignore` covers the known ones — check anyway.
 
 ### If something breaks live
 
-1. Find the bad commit on GitHub (*Commits* on `main`)
-2. `git revert <sha>` → push → Pages redeploys the previous state
-3. Worker: `npx wrangler rollback` restores the previous deployment
+1. **Fastest:** Cloudflare dashboard → Workers & Pages → `wxwords` → *Deployments* →
+   pick the last good one → *Rollback*. Live in seconds.
+2. Then fix the code: open the merged pull request on GitHub → *Revert* → merge the
+   revert PR.
+3. Worker: `npx wrangler rollback` restores the previous deployment.
 
 ### Content conventions
 
@@ -196,8 +226,10 @@ or personal data. `.gitignore` covers the known ones — check anyway.
 
 ## Maintainer checklist
 
-- [ ] GitHub: add collaborator (Write)
-- [ ] Consider branch protection on `main`: Settings → Branches → require a PR
+- [ ] GitHub: add collaborator (Write) — the repo is private
+- [ ] Branch protection is **not available** for private repos on GitHub Free, so
+      "PRs only" is a working agreement, not an enforced rule. Cloudflare's
+      one-click rollback is the safety net.
 - [ ] Cloudflare: invite with a scoped role, if they deploy or inspect R2
 - [ ] Share the admin token through a password manager or Signal
 - [ ] Point them at this file

@@ -1,3 +1,5 @@
+import { configuredOrigins, isAllowedOrigin } from "./origins.js";
+
 /**
  * WxWords Cloud Upload API
  *
@@ -19,14 +21,15 @@ const VALID_CLASSES = [
 
 function corsHeaders(env, request) {
   const origin = request.headers.get("Origin") || "";
-  // Allow both the production site and localhost for dev
-  const allowed = [env.ALLOWED_ORIGIN, "http://localhost:8080", "http://127.0.0.1:8080"];
-  const allow = allowed.includes(origin) ? origin : env.ALLOWED_ORIGIN;
+  // Echo an allowed origin; otherwise answer with the primary site origin, which
+  // the browser will then refuse for the unlisted caller.
+  const allow = isAllowedOrigin(origin, env) ? origin : configuredOrigins(env)[0];
   return {
     "Access-Control-Allow-Origin": allow,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Credentials": "true",
+    "Vary": "Origin",
   };
 }
 
